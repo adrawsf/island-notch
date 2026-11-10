@@ -8,7 +8,7 @@
  * 2. Add an entry below. Order here is the order in the tab bar.
  */
 import { lazy, type ComponentType } from "react";
-import { House, Info, Music, NotebookPen, ScrollText, Timer } from "lucide-react";
+import { House, Music, NotebookPen, ScrollText, Timer } from "lucide-react";
 import type { LazyPanel, TabDefinition, TabPanelProps } from "./types";
 
 /** `lazy()` that can also be preloaded. */
@@ -54,13 +54,6 @@ export const TABS: TabDefinition[] = [
     icon: ScrollText,
     width: 520,
     Panel: panel(() => import("../../features/teleprompter/TeleprompterPanel")),
-  },
-  {
-    id: "about",
-    label: "Tentang",
-    icon: Info,
-    width: 300,
-    Panel: panel(() => import("../../features/about/AboutPanel")),
   },
 ];
 

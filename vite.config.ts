@@ -15,6 +15,7 @@ export default defineConfig({
         main: resolve(import.meta.dirname, "index.html"),
         miniplayer: resolve(import.meta.dirname, "miniplayer.html"),
         teleprompter: resolve(import.meta.dirname, "teleprompter.html"),
+        settings: resolve(import.meta.dirname, "settings.html"),
       },
     },
   },

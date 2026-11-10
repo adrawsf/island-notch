@@ -9,6 +9,7 @@ mod lyrics;
 mod media;
 mod media_source;
 mod miniplayer;
+mod settings_window;
 mod shell;
 mod shortcut;
 mod teleprompter;
@@ -38,6 +39,13 @@ pub fn run() {
             hit_test::set_hit_region,
             foreground::notch_compact_state,
             shell::apply_shell_config,
+            shell::shell_status,
+            settings_window::settings_open,
+            settings_window::settings_close,
+            settings_window::settings_minimize,
+            settings_window::monitors_list,
+            settings_window::autostart_enabled,
+            settings_window::autostart_set,
             media::media_get_state,
             media::media_control,
             media::media_seek,

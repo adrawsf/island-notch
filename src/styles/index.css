@@ -203,3 +203,17 @@ body,
 .glass-slider:not(:disabled):active::-webkit-slider-thumb {
   transform: scale(1.15);
 }
+
+/* ---------- Settings window ---------- */
+
+/* Thin scrollbar that fades into the glass. */
+.settings-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--notch-fg) / 0.18) transparent;
+}
+
+/* Native select popups follow the theme of the glass around them. */
+[data-theme="dark"] select option {
+  background: rgb(32 32 36);
+  color: rgb(255 255 255);
+}

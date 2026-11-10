@@ -5,7 +5,7 @@ import { Minus, Pause, Play, Plus, RotateCcw, X } from "lucide-react";
 import { updateSetting } from "../core/settings/settings";
 import { useSettings } from "../core/settings/useSettings";
 import { useResolvedTheme } from "../shared/useResolvedTheme";
-import { closeTeleprompter } from "../features/teleprompter/teleprompterBridge";
+import { closeTeleprompter, setCaptureExcluded } from "../features/teleprompter/teleprompterBridge";
 import { activeScript, teleprompterData } from "../features/teleprompter/teleprompterStore";
 
 type Phase = "idle" | "countdown" | "playing" | "paused" | "done";
@@ -35,6 +35,12 @@ export function TeleprompterReader() {
   speedRef.current = settings.teleprompterSpeed;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+
+  // The setting can change in any window (notch, settings window): apply it here.
+  const hideFromCapture = settings.teleprompterHideFromCapture;
+  useEffect(() => {
+    setCaptureExcluded(hideFromCapture);
+  }, [hideFromCapture]);
 
   const start = useCallback(() => {
     const seconds = Math.round(settings.teleprompterCountdown);

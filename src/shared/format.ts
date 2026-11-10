@@ -13,7 +13,31 @@ export function formatShortDate(date: Date): string {
   return date.toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" });
 }
 
-/** "Control+Alt+N" -> "Ctrl+Alt+N" */
+const KEY_NAMES: Record<string, string> = {
+  CommandOrControl: "Ctrl",
+  Control: "Ctrl",
+  Super: "Win",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  Backquote: "`",
+  Minus: "-",
+  Equal: "=",
+  BracketLeft: "[",
+  BracketRight: "]",
+  Backslash: "\\",
+  Semicolon: ";",
+  Quote: "'",
+  Comma: ",",
+  Period: ".",
+  Slash: "/",
+};
+
+/** "Control+Alt+N" -> "Ctrl+Alt+N", "Super+Backquote" -> "Win+`" */
 export function prettyShortcut(shortcut: string): string {
-  return shortcut.replace("CommandOrControl", "Ctrl").replace("Control", "Ctrl");
+  return shortcut
+    .split("+")
+    .map((part) => KEY_NAMES[part] ?? part.replace(/^Numpad(\d)$/, "Num $1"))
+    .join("+");
 }

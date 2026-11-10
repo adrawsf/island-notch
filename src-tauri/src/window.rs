@@ -27,7 +27,7 @@ pub fn setup_main_window(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// A connected monitor, as listed in the tray.
+/// A connected monitor, as listed in the settings window.
 #[derive(Debug, Clone)]
 pub struct MonitorInfo {
     pub name: String,

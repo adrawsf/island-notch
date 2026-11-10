@@ -9,7 +9,6 @@
 import { load, type Store } from "@tauri-apps/plugin-store";
 import { isTauri } from "@tauri-apps/api/core";
 
-// String unions below are mirrored in `src-tauri/src/tray.rs` (menu options).
 export type NotchShape = "notch" | "island";
 export type NotchSize = "compact" | "default" | "large";
 export type ThemeMode = "dark" | "light" | "auto";
@@ -173,7 +172,7 @@ export function getSettings(): AppSettings {
 
 /**
  * Saves one setting. Invalid values are ignored, so callers may pass unchecked
- * input (e.g. a tray menu id) cast to the key's type.
+ * input cast to the key's type.
  */
 export function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
   if (!SCHEMA[key].valid(value) || current[key] === value) return;
@@ -185,4 +184,20 @@ export function updateSetting<K extends keyof AppSettings>(key: K, value: AppSet
 export function subscribeSettings(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** Keys a reset leaves alone: app state, not preferences. */
+const KEEP_ON_RESET: (keyof AppSettings)[] = ["lastTabId", "welcomeShown", "mediaLyricsOpen"];
+
+/** Puts every preference back to its default. */
+export function resetSettings(): void {
+  const fresh = defaults();
+  for (const key of Object.keys(SCHEMA) as (keyof AppSettings)[]) {
+    if (!KEEP_ON_RESET.includes(key)) updateSetting(key, fresh[key]);
+  }
+}
+
+/** Default value of one setting (e.g. to show it next to a control). */
+export function defaultSetting<K extends keyof AppSettings>(key: K): AppSettings[K] {
+  return SCHEMA[key].default;
 }

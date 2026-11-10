@@ -4,7 +4,7 @@
  * in order, via the `idleWidgets` setting; the pill hugs whatever they render.
  *
  * To add a widget: write a component that renders a short inline row (text,
- * an icon) and add it to IDLE_WIDGETS. The tray lists it automatically.
+ * an icon) and add it to IDLE_WIDGETS. The settings window lists it automatically.
  */
 import type { ComponentType } from "react";
 import { useNow } from "../../shared/useNow";
@@ -13,7 +13,7 @@ import { formatClock, formatShortDate } from "../../shared/format";
 export interface IdleWidgetDefinition {
   /** Stable id stored in settings. */
   id: string;
-  /** Name shown in the tray menu. */
+  /** Name shown in the settings window. */
   label: string;
   Component: ComponentType;
 }

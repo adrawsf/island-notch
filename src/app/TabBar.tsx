@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { Settings } from "lucide-react";
+import { openSettingsWindow } from "../core/shell/shellBridge";
 import { TABS } from "./tabs/registry";
 
 interface TabBarProps {
@@ -10,11 +12,11 @@ const BUTTON = 28;
 const GAP = 2;
 const PAD = 3;
 
-/** Glass segmented control; the active "lens" slides between tabs. */
+/** Glass segmented control; the active "lens" slides between tabs. A gear next to it opens the settings window. */
 export function TabBar({ activeId, onSelect }: TabBarProps) {
   const activeIndex = Math.max(0, TABS.findIndex((t) => t.id === activeId));
   return (
-    <div className="flex justify-center px-4 pb-3 pt-3">
+    <div className="flex items-center justify-center gap-1.5 px-4 pb-3 pt-3">
       <nav className="glass-well relative flex rounded-full" style={{ padding: PAD, gap: GAP }} aria-label="Tab notch">
         <motion.span
           aria-hidden
@@ -44,6 +46,16 @@ export function TabBar({ activeId, onSelect }: TabBarProps) {
           );
         })}
       </nav>
+      <button
+        type="button"
+        onClick={openSettingsWindow}
+        data-tip="Pengaturan"
+        aria-label="Pengaturan"
+        className="glass-button flex shrink-0 items-center justify-center rounded-full text-notch-muted hover:text-notch-fg"
+        style={{ width: BUTTON + PAD * 2, height: BUTTON + PAD * 2 }}
+      >
+        <Settings size={14} strokeWidth={2.2} />
+      </button>
     </div>
   );
 }
