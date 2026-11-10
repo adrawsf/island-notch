@@ -22,14 +22,13 @@ function isEditing(): boolean {
 interface NotchControllerOptions {
   /** Hovering does not open the notch (e.g. a toast is showing and should be clickable). */
   suppressHoverOpen?: boolean;
-  /**
-   * Tab to show whenever the notch opens (e.g. Media while something plays).
-   * Not persisted, so the user's last chosen tab is kept for other times.
-   */
-  tabOnOpen?: string | null;
 }
 
-export function useNotchController({ suppressHoverOpen = false, tabOnOpen = null }: NotchControllerOptions = {}) {
+/**
+ * The notch always opens on the tab the user last picked (`lastTabId`),
+ * whatever is playing or counting down.
+ */
+export function useNotchController({ suppressHoverOpen = false }: NotchControllerOptions = {}) {
   const settings = useSettings();
   const [expanded, setExpanded] = useState(false);
   const [activeTabId, setActiveTabId] = useState(() => findTab(settings.lastTabId).id);
@@ -40,19 +39,16 @@ export function useNotchController({ suppressHoverOpen = false, tabOnOpen = null
   settingsRef.current = settings;
   const suppressHoverOpenRef = useRef(suppressHoverOpen);
   suppressHoverOpenRef.current = suppressHoverOpen;
-  const tabOnOpenRef = useRef(tabOnOpen);
-  tabOnOpenRef.current = tabOnOpen;
 
   const clearTimer = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
   };
 
-  // Every open/close goes through here so `tabOnOpen` applies to all of them.
+  // Every open/close goes through here.
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const setOpen = useCallback((next: boolean) => {
-    if (next && !expandedRef.current && tabOnOpenRef.current) setActiveTabId(tabOnOpenRef.current);
     // Drop keyboard focus on close so typing never goes into a hidden field.
     if (!next) {
       (document.activeElement as HTMLElement | null)?.blur?.();

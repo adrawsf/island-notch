@@ -5,7 +5,8 @@ import { useLyricPosition } from "./useLyrics";
 import { currentLineIndex } from "./lyricsText";
 
 /**
- * The line being sung and the next one, sliding up as the song moves on.
+ * The line being sung and the next one. Long lines wrap instead of being cut
+ * off, so the block grows with the text (the mini player window follows).
  * Before the first line it shows the first line as "next".
  */
 export function LyricsPair({ media, lyrics }: { media: MediaState; lyrics: Lyrics }) {
@@ -15,22 +16,19 @@ export function LyricsPair({ media, lyrics }: { media: MediaState; lyrics: Lyric
   const next = lyrics.lines.slice(index + 1).find((l) => l.text)?.text ?? "";
 
   return (
-    <div className="relative h-[40px] overflow-hidden" aria-live="polite">
-      <AnimatePresence mode="popLayout" initial={false}>
+    <div className="min-h-[40px]" aria-live="polite">
+      {/* "wait": the old pair leaves before the new one enters, so the block's
+          height is always that of the visible text. */}
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={index}
-          className="absolute inset-x-0 top-0"
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -14 }}
-          transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <div className="truncate text-[14px] font-semibold leading-5" data-tip-truncated data-tip={current}>
-            {current || "♪"}
-          </div>
-          <div className="truncate text-[12px] leading-5 text-notch-muted" data-tip-truncated data-tip={next}>
-            {next}
-          </div>
+          <div className="break-words text-[14px] font-semibold leading-5">{current || "♪"}</div>
+          {next && <div className="mt-0.5 break-words text-[12px] leading-[18px] text-notch-muted">{next}</div>}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -1,7 +1,7 @@
-import { useEffect, useRef, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { Maximize2, MicVocal, Minimize2, Music, X } from "lucide-react";
+import { Maximize2, MicVocal, Minimize2, Music, SlidersHorizontal, X } from "lucide-react";
 import { updateSetting } from "../core/settings/settings";
 import { useSettings } from "../core/settings/useSettings";
 import { useResolvedTheme } from "../shared/useResolvedTheme";
@@ -10,7 +10,9 @@ import { iconButton, MediaProgress, TransportButtons } from "../features/media/M
 import { mediaControl } from "../features/media/mediaBridge";
 import { hideMiniPlayer } from "../features/media/miniPlayerBridge";
 import { useMedia } from "../features/media/useMedia";
+import { LyricsSettings } from "../features/lyrics/LyricsControls";
 import { LyricsPair } from "../features/lyrics/LyricsPair";
+import { LyricsView } from "../features/lyrics/LyricsView";
 import { useLyrics } from "../features/lyrics/useLyrics";
 
 /** Elements that handle their own pointer input instead of dragging the window. */
@@ -18,13 +20,14 @@ const INTERACTIVE = "button, [role='slider']";
 /** Transparent margin around the card so the glass shadow is not clipped (px, each side). */
 const MARGIN = 8;
 /** Card width per layout (CSS px); the window is sized to the card. */
-const CARD_WIDTH = { full: 360, compact: 300 } as const;
+const CARD_WIDTH = { full: 400, compact: 300 } as const;
 
 /**
- * Floating card. Full: cover, title, progress, controls and (optionally) the
- * current lyrics. Compact: just the cover and the lyrics (or the title when
- * there are none); clicking the cover plays/pauses. Drag anywhere else to
- * move. The window is sized to the card, keeping its bottom-right corner.
+ * Floating card. Full: cover, title, progress, controls, the whole lyrics
+ * scrolling with the current line highlighted, and lyrics settings (source,
+ * timing). Compact: cover plus the current and next line, wrapped so nothing
+ * is cut off; clicking the cover plays/pauses. Drag anywhere else to move.
+ * The window is sized to the card, keeping its bottom-right corner.
  */
 export function MiniPlayer() {
   const media = useMedia();
@@ -34,7 +37,7 @@ export function MiniPlayer() {
   // Compact mode exists to show lyrics, so it always fetches them.
   const lyrics = useLyrics(media, settings.miniPlayerLyrics || compact);
   const synced = lyrics.status === "found" && lyrics.lyrics.synced ? lyrics.lyrics : null;
-  const showLyrics = media.active && settings.miniPlayerLyrics && synced !== null;
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const cardWidth = compact ? CARD_WIDTH.compact : CARD_WIDTH.full;
 
   // Fit the window to the card.
@@ -89,18 +92,6 @@ export function MiniPlayer() {
           >
             {compact ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
           </button>
-          {media.active && !compact && (
-            <button
-              type="button"
-              onClick={() => updateSetting("miniPlayerLyrics", !settings.miniPlayerLyrics)}
-              className={`${iconButton} h-6 w-6 ${settings.miniPlayerLyrics ? "glass-button text-notch-fg" : "text-notch-muted"}`}
-              aria-pressed={settings.miniPlayerLyrics}
-              aria-label={settings.miniPlayerLyrics ? "Sembunyikan lirik" : "Tampilkan lirik"}
-              data-tip="Lirik"
-            >
-              <MicVocal size={12} />
-            </button>
-          )}
           <button
             type="button"
             onClick={hideMiniPlayer}
@@ -144,24 +135,57 @@ export function MiniPlayer() {
           </div>
         ) : media.active ? (
           <>
-            <div className="flex items-center gap-3">
-              <Artwork src={media.artwork} className="h-[88px] w-[88px] shrink-0 rounded-[18px] shadow-md" iconSize={26} />
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-10">
-                <div className="min-w-0">
-                  <div className="truncate text-[13px] font-semibold leading-tight" data-tip-truncated data-tip={media.title}>
-                    {media.title || "Tanpa judul"}
+            <div className="flex items-center gap-3 pr-14">
+              <Artwork src={media.artwork} className="h-16 w-16 shrink-0 rounded-[14px] shadow-md" iconSize={22} />
+              <div className="min-w-0">
+                <div className="truncate text-[14px] font-semibold leading-tight" data-tip-truncated data-tip={media.title}>
+                  {media.title || "Tanpa judul"}
+                </div>
+                {media.artist && (
+                  <div className="truncate text-xs text-notch-muted" data-tip-truncated data-tip={media.artist}>
+                    {media.artist}
                   </div>
-                  {media.artist && <div className="truncate text-xs text-notch-muted">{media.artist}</div>}
-                </div>
-                <MediaProgress media={media} showTimes={false} />
-                <div className="flex items-center justify-center gap-2">
-                  <TransportButtons media={media} compact />
-                </div>
+                )}
               </div>
             </div>
-            {showLyrics && (
-              <div className="glass-well rounded-2xl px-3.5 py-2">
-                <LyricsPair media={media} lyrics={synced} />
+
+            <MediaProgress media={media} />
+
+            <div className="relative flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => updateSetting("miniPlayerLyrics", !settings.miniPlayerLyrics)}
+                className={`${iconButton} absolute left-0 h-7 w-7 ${
+                  settings.miniPlayerLyrics ? "glass-button text-notch-fg" : "text-notch-muted"
+                }`}
+                aria-pressed={settings.miniPlayerLyrics}
+                aria-label={settings.miniPlayerLyrics ? "Sembunyikan lirik" : "Tampilkan lirik"}
+                data-tip="Lirik"
+              >
+                <MicVocal size={14} />
+              </button>
+              <TransportButtons media={media} compact />
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((v) => !v)}
+                className={`${iconButton} absolute right-0 h-7 w-7 ${settingsOpen ? "glass-button text-notch-fg" : "text-notch-muted"}`}
+                aria-pressed={settingsOpen}
+                aria-label="Pengaturan lirik"
+                data-tip="Sumber & timing lirik"
+              >
+                <SlidersHorizontal size={14} />
+              </button>
+            </div>
+
+            {settings.miniPlayerLyrics && (
+              <div className="glass-well rounded-2xl px-4 py-1">
+                <LyricsView media={media} result={lyrics} className="h-[220px]" />
+              </div>
+            )}
+
+            {settingsOpen && (
+              <div className="glass-well rounded-2xl px-3.5 py-3">
+                <LyricsSettings media={media} result={lyrics} />
               </div>
             )}
           </>

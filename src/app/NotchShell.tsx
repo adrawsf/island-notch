@@ -11,7 +11,7 @@ import { useMedia } from "../features/media/useMedia";
 import { useMiniPlayerVisible } from "../features/media/miniPlayerBridge";
 import { PomodoroPill } from "../features/pomodoro/PomodoroPill";
 import { usePomodoro } from "../features/pomodoro/pomodoroStore";
-import { DEFAULT_TAB_WIDTH, MEDIA_TAB_ID, POMODORO_TAB_ID, preloadPanels } from "./tabs/registry";
+import { DEFAULT_TAB_WIDTH, preloadPanels } from "./tabs/registry";
 import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
 import { useTrackPeek } from "./useTrackPeek";
@@ -30,7 +30,7 @@ const SIZE_ZOOM: Record<NotchSize, number> = { compact: 0.9, default: 1, large: 
 /** Size used before anything has been measured. */
 const INITIAL_SIZE: TabSize = { width: 120, height: 34 };
 /** Expanded notch grows sideways, not down: content past this scrolls inside its panel. */
-const MAX_HEIGHT = 290;
+const MAX_HEIGHT = 340;
 /** Radius of the concave "ears" joining a flush notch to the screen edge. */
 const EAR_STYLE = { "--ear": "10px" } as CSSProperties;
 
@@ -53,7 +53,6 @@ export function NotchShell() {
   const idle: IdleKind = pomo.started && !peekTrack ? "pomodoro" : mediaInPill ? "media" : "widget";
   const notch = useNotchController({
     suppressHoverOpen: toast !== null,
-    tabOnOpen: pomo.started ? POMODORO_TAB_ID : media.active && !miniPlayerVisible ? MEDIA_TAB_ID : null,
   });
   const theme = useResolvedTheme(settings.theme);
 

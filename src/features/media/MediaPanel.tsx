@@ -44,7 +44,10 @@ export default function MediaPanel({ requestClose }: TabPanelProps) {
 
         <div className="min-w-0 flex-1">
           {mediaLyricsOpen ? (
-            <LyricsView media={media} result={lyrics} className="h-[84px]" />
+            <div className="flex flex-col gap-1">
+              <TrackLine media={media} />
+              <LyricsView media={media} result={lyrics} className="h-[62px]" />
+            </div>
           ) : (
             <TrackInfo media={media} />
           )}
@@ -100,6 +103,16 @@ export default function MediaPanel({ requestClose }: TabPanelProps) {
           <LyricsSettings media={media} result={lyrics} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** One compact line above the lyrics: title, then artist. */
+function TrackLine({ media }: { media: MediaState }) {
+  return (
+    <div className="min-w-0 truncate text-[12px] leading-4" data-tip-truncated data-tip={`${media.title} · ${media.artist}`}>
+      <span className="font-semibold">{media.title || "Tanpa judul"}</span>
+      {media.artist && <span className="text-notch-muted"> · {media.artist}</span>}
     </div>
   );
 }

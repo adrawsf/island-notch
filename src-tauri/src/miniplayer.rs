@@ -128,7 +128,7 @@ pub fn mini_player_hide(app: AppHandle) {
 pub fn mini_player_fit(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
     let Some(w) = window(&app) else { return Ok(()) };
     let width = width.clamp(160.0, 600.0);
-    let height = height.clamp(56.0, 400.0);
+    let height = height.clamp(56.0, 720.0);
     let scale = w.scale_factor().map_err(|e| e.to_string())?;
     let pos = w.outer_position().map_err(|e| e.to_string())?;
     let size = w.outer_size().map_err(|e| e.to_string())?;

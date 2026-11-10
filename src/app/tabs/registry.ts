@@ -18,9 +18,6 @@ function panel(loader: () => Promise<{ default: ComponentType<TabPanelProps> }>)
 
 /** Panel width when a tab does not set one (CSS px). */
 export const DEFAULT_TAB_WIDTH = 400;
-/** Tabs opened by hover/shortcut while their feature is active. */
-export const MEDIA_TAB_ID = "media";
-export const POMODORO_TAB_ID = "pomodoro";
 
 export const TABS: TabDefinition[] = [
   {
@@ -31,10 +28,10 @@ export const TABS: TabDefinition[] = [
     Panel: panel(() => import("../../features/home/HomePanel")),
   },
   {
-    id: MEDIA_TAB_ID,
+    id: "media",
     label: "Media",
     icon: Music,
-    width: 520,
+    width: 560,
     Panel: panel(() => import("../../features/media/MediaPanel")),
   },
   {
@@ -45,7 +42,7 @@ export const TABS: TabDefinition[] = [
     Panel: panel(() => import("../../features/notes/NotesPanel")),
   },
   {
-    id: POMODORO_TAB_ID,
+    id: "pomodoro",
     label: "Pomodoro",
     icon: Timer,
     width: 540,
