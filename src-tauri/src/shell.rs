@@ -28,6 +28,7 @@ pub struct ShellConfig {
     pub lyrics_source: String,
     /// Every lyrics source (the registry lives in the frontend).
     pub lyrics_source_options: Vec<MenuOption>,
+    pub shrink_for_browsers: bool,
     pub shortcut_enabled: bool,
     pub toggle_shortcut: String,
 }

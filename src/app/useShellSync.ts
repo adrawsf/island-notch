@@ -33,6 +33,7 @@ export function useShellSync() {
       pillShowsLyrics: s.pillShowsLyrics,
       lyricsSource: s.lyricsSource,
       lyricsSourceOptions: LYRICS_SOURCE_OPTIONS,
+      shrinkForBrowsers: s.shrinkForBrowsers,
       shortcutEnabled: s.shortcutEnabled,
       toggleShortcut: s.toggleShortcut,
     }).then((result) => {
@@ -40,7 +41,7 @@ export function useShellSync() {
         showToast({ title: "Shortcut tidak bisa dipasang", body: result.shortcutError, durationMs: 6000 });
       }
     });
-  }, [s.monitor, s.notchShape, s.notchSize, s.theme, s.idleWidgets, s.idleShowsMedia, s.pillShowsLyrics, s.lyricsSource, s.shortcutEnabled, s.toggleShortcut]);
+  }, [s.monitor, s.notchShape, s.notchSize, s.theme, s.idleWidgets, s.idleShowsMedia, s.pillShowsLyrics, s.lyricsSource, s.shrinkForBrowsers, s.shortcutEnabled, s.toggleShortcut]);
 
   useEffect(() => onTraySelect(applyTraySelection), []);
 
@@ -88,6 +89,9 @@ function applyTraySelection(id: string) {
       break;
     case "lyricsPill":
       updateSetting("pillShowsLyrics", !getSettings().pillShowsLyrics);
+      break;
+    case "shrinkForBrowsers":
+      updateSetting("shrinkForBrowsers", !getSettings().shrinkForBrowsers);
       break;
     case "shortcut":
       updateSetting("shortcutEnabled", !getSettings().shortcutEnabled);

@@ -15,6 +15,7 @@ import { DEFAULT_TAB_WIDTH, preloadPanels } from "./tabs/registry";
 import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
 import { useTrackPeek } from "./useTrackPeek";
+import { useBrowserCompact } from "./useBrowserCompact";
 import { CollapsedPill } from "./CollapsedPill";
 import { Measure } from "./Measure";
 import { NotchToastView } from "./NotchToastView";
@@ -35,7 +36,9 @@ const MAX_HEIGHT = 340;
 const EAR_STYLE = { "--ear": "10px" } as CSSProperties;
 
 type View = "expanded" | "toast" | "collapsed";
-type IdleKind = "pomodoro" | "media" | "widget";
+type IdleKind = "handle" | "pomodoro" | "media" | "widget";
+/** Hover target around the thin handle: wider than the line, as short as it (CSS px). */
+const HANDLE_HIT = { width: 120, height: 6 };
 
 /** The notch: a liquid-glass island that hugs whatever it is showing. */
 export function NotchShell() {
@@ -49,8 +52,17 @@ export function NotchShell() {
   const mediaInPill = media.active && settings.idleShowsMedia && !miniPlayerVisible;
   // While the focus timer owns the pill, a new track still shows its title
   // for a moment before the timer comes back.
-  const peekTrack = useTrackPeek(media, pomo.started && mediaInPill);
-  const idle: IdleKind = pomo.started && !peekTrack ? "pomodoro" : mediaInPill ? "media" : "widget";
+  // A browser under the notch: shrink to a thin handle so its tabs stay
+  // clickable; hovering the handle still opens the notch.
+  const compact = useBrowserCompact() && settings.shrinkForBrowsers;
+  const peekTrack = useTrackPeek(media, pomo.started && mediaInPill && !compact);
+  const idle: IdleKind = compact
+    ? "handle"
+    : pomo.started && !peekTrack
+      ? "pomodoro"
+      : mediaInPill
+        ? "media"
+        : "widget";
   const notch = useNotchController({
     suppressHoverOpen: toast !== null,
   });
@@ -75,7 +87,9 @@ export function NotchShell() {
 
   const island = settings.notchShape === "island";
   const zoom = SIZE_ZOOM[settings.notchSize];
-  const topGap = island ? ISLAND_TOP_GAP : 0;
+  // The handle hugs the screen edge even in island shape, to stay clear of the tabs.
+  const handle = view === "collapsed" && idle === "handle";
+  const topGap = island && !handle ? ISLAND_TOP_GAP : 0;
   // Capsule when collapsed; rounder corners as it grows.
   const radius = view === "expanded" ? 28 : view === "toast" ? 24 : size.height / 2;
 
@@ -89,15 +103,16 @@ export function NotchShell() {
   // Tell the Rust hit-test where the notch is (window CSS px). The target size
   // is reported immediately so the region never lags behind the animation.
   useEffect(() => {
-    const width = size.width * zoom;
+    const width = handle ? Math.max(size.width * zoom, HANDLE_HIT.width) : size.width * zoom;
+    const height = handle ? HANDLE_HIT.height : size.height * zoom;
     reportHitRegion({
       x: (window.innerWidth - width) / 2,
       y: topGap,
       width,
-      height: size.height * zoom,
+      height,
       expanded: notch.expanded,
     });
-  }, [size.width, size.height, zoom, topGap, notch.expanded]);
+  }, [size.width, size.height, zoom, topGap, notch.expanded, handle]);
 
   const { Panel } = notch.activeTab;
   const contentKey = view === "expanded" ? "expanded" : view === "toast" ? `toast-${toast?.id}` : `idle-${idle}`;
@@ -178,6 +193,7 @@ export function NotchShell() {
                     <MediaPill media={media} showLyrics={settings.pillShowsLyrics && !peekTrack} onClick={notch.open} />
                   )}
                   {idle === "widget" && <CollapsedPill widgets={settings.idleWidgets} onClick={notch.open} />}
+                  {idle === "handle" && <div className="h-1.5 w-10" aria-label="Notch (diperkecil)" />}
                 </Measure>
               )}
             </motion.div>

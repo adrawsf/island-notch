@@ -35,6 +35,7 @@ src-tauri/src/
   lib.rs               Hanya merangkai plugin, setup, dan daftar command
   window.rs            Posisi window utama + browser args WebView2
   hit_test.rs          Polling kursor untuk click-through dan klik di luar
+  foreground.rs        Deteksi browser di depan yang menempel atas (notch jadi garis tipis)
   shell.rs             Menerapkan config shell dari frontend (apply_shell_config)
   tray.rs              Ikon dan menu tray (pengaturan sementara)
   shortcut.rs          Shortcut global buka/tutup notch

@@ -3,6 +3,7 @@
 //! Each domain lives in its own module and exposes its commands from there.
 //! `run()` only wires plugins, setup and the command list together.
 
+mod foreground;
 mod hit_test;
 mod lyrics;
 mod media;
@@ -28,11 +29,13 @@ pub fn run() {
             window::setup_main_window(app.handle())?;
             tray::create(app.handle())?;
             hit_test::start(app.handle().clone());
+            foreground::start(app.handle().clone());
             media::start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             hit_test::set_hit_region,
+            foreground::notch_compact_state,
             shell::apply_shell_config,
             media::media_get_state,
             media::media_control,

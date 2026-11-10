@@ -17,6 +17,7 @@ export type ShellConfig = Pick<
   | "idleShowsMedia"
   | "pillShowsLyrics"
   | "lyricsSource"
+  | "shrinkForBrowsers"
   | "shortcutEnabled"
   | "toggleShortcut"
 > & {

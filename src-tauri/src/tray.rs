@@ -23,6 +23,7 @@ const ID_SHORTCUT: &str = "shortcut";
 const ID_MEDIA_PILL: &str = "mediaPill";
 const ID_LYRICS_PILL: &str = "lyricsPill";
 const ID_MINI_PLAYER: &str = "miniPlayer";
+const ID_SHRINK_BROWSERS: &str = "shrinkForBrowsers";
 
 // Values must match the unions in `src/core/settings/settings.ts`.
 const SHAPES: &[(&str, &str)] = &[("notch", "Notch (menempel di atas)"), ("island", "Island (melayang)")];
@@ -147,6 +148,11 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(&radio("shape", "Bentuk", SHAPES, &config.notch_shape)?)
         .item(&radio("size", "Ukuran", SIZES, &config.notch_size)?)
         .item(&radio("theme", "Tema", THEMES, &config.theme)?)
+        .item(
+            &CheckMenuItemBuilder::with_id(ID_SHRINK_BROWSERS, "Kecilkan saat browser")
+                .checked(config.shrink_for_browsers)
+                .build(app)?,
+        )
         .item(&idle_menu.build()?)
         .item(
             &CheckMenuItemBuilder::with_id(ID_MEDIA_PILL, "Tampilkan lagu di pill")
