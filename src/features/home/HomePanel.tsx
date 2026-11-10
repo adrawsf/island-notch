@@ -6,9 +6,10 @@ import { useNow } from "../../shared/useNow";
 export default function HomePanel(_props: TabPanelProps) {
   const now = useNow(1000);
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1">
-      <span className="text-5xl font-semibold tabular-nums tracking-tight">{formatClock(now)}</span>
-      <span className="text-sm text-notch-muted">{formatLongDate(now)}</span>
+    <div className="flex items-center justify-center gap-5 py-2">
+      <span className="text-4xl font-semibold tabular-nums tracking-tight">{formatClock(now)}</span>
+      <span className="h-8 w-px bg-notch-fg/15" aria-hidden />
+      <span className="text-sm leading-snug text-notch-muted">{formatLongDate(now)}</span>
     </div>
   );
 }

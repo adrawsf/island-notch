@@ -9,6 +9,11 @@
 import { load, type Store } from "@tauri-apps/plugin-store";
 import { isTauri } from "@tauri-apps/api/core";
 
+// String unions below are mirrored in `src-tauri/src/tray.rs` (menu options).
+export type NotchShape = "notch" | "island";
+export type NotchSize = "compact" | "default" | "large";
+export type ThemeMode = "dark" | "light" | "auto";
+
 export interface AppSettings {
   /** Hovering the collapsed notch expands it. */
   expandOnHover: boolean;
@@ -16,6 +21,31 @@ export interface AppSettings {
   closeDelayMs: number;
   /** Tab shown when the notch opens; null = first tab in the registry. */
   lastTabId: string | null;
+  /** OS monitor name the notch lives on; null = primary monitor. */
+  monitor: string | null;
+  /** "notch" hugs the top edge, "island" floats a little below it. */
+  notchShape: NotchShape;
+  /** Overall scale of the notch. */
+  notchSize: NotchSize;
+  theme: ThemeMode;
+  /** Idle widget ids shown in the collapsed pill, in order (see src/app/idle). */
+  idleWidgets: string[];
+  /** While media plays, the pill shows the track instead of the idle widget. */
+  idleShowsMedia: boolean;
+  /** The media pill shows the current synced lyric line (fetched from LRCLIB). */
+  pillShowsLyrics: boolean;
+  /** The Media tab shows lyrics instead of track details. */
+  mediaLyricsOpen: boolean;
+  /** Global shortcut that opens/closes the notch. */
+  shortcutEnabled: boolean;
+  /** Shortcut in the global-shortcut plugin format, e.g. "Control+Alt+N". */
+  toggleShortcut: string;
+  /** Pomodoro phase lengths in minutes. */
+  pomodoroFocusMin: number;
+  pomodoroShortBreakMin: number;
+  pomodoroLongBreakMin: number;
+  /** The first-run hint toast has been shown. */
+  welcomeShown: boolean;
 }
 
 type Validator<T> = (value: unknown) => value is T;
@@ -25,11 +55,37 @@ const isNonNegativeNumber: Validator<number> = (v): v is number =>
   typeof v === "number" && Number.isFinite(v) && v >= 0;
 const isStringOrNull: Validator<string | null> = (v): v is string | null =>
   v === null || typeof v === "string";
+const isNonEmptyString: Validator<string> = (v): v is string => typeof v === "string" && v.trim() !== "";
+const isMinutes: Validator<number> = (v): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 180;
+/** Up to 8 distinct short ids. Unknown ids are tolerated and skipped when rendering. */
+const isIdList: Validator<string[]> = (v): v is string[] =>
+  Array.isArray(v) &&
+  v.length <= 8 &&
+  v.every((x) => typeof x === "string" && x.length > 0 && x.length <= 40) &&
+  new Set(v).size === v.length;
+const oneOf =
+  <T extends string>(...values: T[]): Validator<T> =>
+  (v): v is T =>
+    values.includes(v as T);
 
 const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Validator<AppSettings[K]> } } = {
   expandOnHover: { default: true, valid: isBoolean },
   closeDelayMs: { default: 600, valid: isNonNegativeNumber },
   lastTabId: { default: null, valid: isStringOrNull },
+  monitor: { default: null, valid: isStringOrNull },
+  notchShape: { default: "notch", valid: oneOf("notch", "island") },
+  notchSize: { default: "default", valid: oneOf("compact", "default", "large") },
+  theme: { default: "dark", valid: oneOf("dark", "light", "auto") },
+  idleWidgets: { default: ["clock"], valid: isIdList },
+  idleShowsMedia: { default: true, valid: isBoolean },
+  pillShowsLyrics: { default: true, valid: isBoolean },
+  mediaLyricsOpen: { default: false, valid: isBoolean },
+  shortcutEnabled: { default: true, valid: isBoolean },
+  toggleShortcut: { default: "Control+Alt+N", valid: isNonEmptyString },
+  pomodoroFocusMin: { default: 25, valid: isMinutes },
+  pomodoroShortBreakMin: { default: 5, valid: isMinutes },
+  pomodoroLongBreakMin: { default: 15, valid: isMinutes },
+  welcomeShown: { default: false, valid: isBoolean },
 };
 
 const STORE_FILE = "settings.json";
@@ -60,6 +116,14 @@ export async function loadSettings(): Promise<void> {
     }
     current = next as unknown as AppSettings;
     emit();
+    // Another window (notch / mini player) changed a setting: adopt it.
+    await store.onChange((key, value) => {
+      if (!(key in SCHEMA)) return;
+      const k = key as keyof AppSettings;
+      if (!SCHEMA[k].valid(value) || current[k] === value) return;
+      current = { ...current, [k]: value };
+      emit();
+    });
   } catch (err) {
     console.error("[settings] load failed, using defaults", err);
   }
@@ -69,6 +133,10 @@ export function getSettings(): AppSettings {
   return current;
 }
 
+/**
+ * Saves one setting. Invalid values are ignored, so callers may pass unchecked
+ * input (e.g. a tray menu id) cast to the key's type.
+ */
 export function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
   if (!SCHEMA[key].valid(value) || current[key] === value) return;
   current = { ...current, [key]: value };

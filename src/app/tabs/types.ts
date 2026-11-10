@@ -12,6 +12,11 @@ export interface TabPanelProps {
   requestClose: () => void;
 }
 
+/** A lazily loaded panel that can be preloaded before it is first shown. */
+export type LazyPanel = LazyExoticComponent<ComponentType<TabPanelProps>> & {
+  preload: () => Promise<unknown>;
+};
+
 /**
  * One entry in the tab registry. The shell handles navigation, sizing and
  * animation; a feature only describes itself here.
@@ -21,7 +26,7 @@ export interface TabDefinition {
   id: string;
   label: string;
   icon: LucideIcon;
-  /** Expanded notch size while this tab is active. Defaults to DEFAULT_TAB_SIZE. */
-  size?: TabSize;
-  Panel: LazyExoticComponent<ComponentType<TabPanelProps>>;
+  /** Panel width in CSS px (defaults to DEFAULT_TAB_WIDTH). Height follows the content. */
+  width?: number;
+  Panel: LazyPanel;
 }

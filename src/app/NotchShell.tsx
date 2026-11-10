@@ -1,79 +1,181 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { isTauri } from "@tauri-apps/api/core";
 import { reportHitRegion } from "../core/notch/notchBridge";
-import { COLLAPSED_SIZE, DEFAULT_TAB_SIZE } from "./tabs/registry";
+import type { NotchSize } from "../core/settings/settings";
+import { useSettings } from "../core/settings/useSettings";
+import { dismissToast, useCurrentToast } from "../core/toast/toastQueue";
+import { useResolvedTheme } from "../shared/useResolvedTheme";
+import { MediaPill } from "../features/media/MediaPill";
+import { useMedia } from "../features/media/useMedia";
+import { PomodoroPill } from "../features/pomodoro/PomodoroPill";
+import { usePomodoro } from "../features/pomodoro/pomodoroStore";
+import { DEFAULT_TAB_WIDTH, MEDIA_TAB_ID, POMODORO_TAB_ID, preloadPanels } from "./tabs/registry";
+import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
 import { CollapsedPill } from "./CollapsedPill";
+import { Measure } from "./Measure";
+import { NotchToastView } from "./NotchToastView";
 import { TabBar } from "./TabBar";
 
-const SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.9 } as const;
+const IN_TAURI = isTauri();
+/** Jelly spring for the outline: overshoots a little and settles, like the Dynamic Island. */
+const SPRING = { type: "spring", stiffness: 300, damping: 19, mass: 0.9 } as const;
+const CONTENT_FADE = { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] } as const;
+/** Gap between the screen edge and the notch in "island" shape (CSS px, unscaled). */
+const ISLAND_TOP_GAP = 10;
+const SIZE_ZOOM: Record<NotchSize, number> = { compact: 0.9, default: 1, large: 1.15 };
+/** Size used before anything has been measured. */
+const INITIAL_SIZE: TabSize = { width: 120, height: 34 };
+/** Expanded notch grows sideways, not down: content past this scrolls inside its panel. */
+const MAX_HEIGHT = 240;
+/** Radius of the concave "ears" joining a flush notch to the screen edge. */
+const EAR_STYLE = { "--ear": "10px" } as CSSProperties;
 
-/** The notch: a black island pinned to the top-center of the window. */
+type View = "expanded" | "toast" | "collapsed";
+type IdleKind = "pomodoro" | "media" | "widget";
+
+/** The notch: a liquid-glass island that hugs whatever it is showing. */
 export function NotchShell() {
-  const notch = useNotchController();
-  const size = notch.expanded ? notch.activeTab.size ?? DEFAULT_TAB_SIZE : COLLAPSED_SIZE;
-  const radius = notch.expanded ? 28 : 17;
+  const toast = useCurrentToast();
+  const media = useMedia();
+  const pomo = usePomodoro();
+  const settings = useSettings();
+  // Idle content priority: a pomodoro in progress, then media, then the idle widget.
+  const idle: IdleKind = pomo.started ? "pomodoro" : media.active && settings.idleShowsMedia ? "media" : "widget";
+  const notch = useNotchController({
+    suppressHoverOpen: toast !== null,
+    tabOnOpen: pomo.started ? POMODORO_TAB_ID : media.active ? MEDIA_TAB_ID : null,
+  });
+  const theme = useResolvedTheme(settings.theme);
 
-  // Tell the Rust hit-test where the notch is. The target size is reported
-  // immediately so the region never lags behind the animation.
+  useEffect(preloadPanels, []);
+
+  // Toasts wait while the notch is expanded.
+  const view: View = notch.expanded ? "expanded" : toast ? "toast" : "collapsed";
+  const sizeKey = view === "expanded" ? `tab:${notch.activeTab.id}` : view === "toast" ? "toast" : `idle:${idle}`;
+
+  // Natural size of each view's content, reported by <Measure>.
+  const [sizes, setSizes] = useState<Record<string, TabSize>>({});
+  const onSize = useCallback((key: string, s: TabSize) => {
+    setSizes((prev) => (prev[key]?.width === s.width && prev[key]?.height === s.height ? prev : { ...prev, [key]: s }));
+  }, []);
+  // Until a view is measured, hold the previous size instead of jumping.
+  const lastSize = useRef(INITIAL_SIZE);
+  const measured = sizes[sizeKey] ?? lastSize.current;
+  const size = { width: measured.width, height: Math.min(measured.height, MAX_HEIGHT) };
+  lastSize.current = size;
+
+  const island = settings.notchShape === "island";
+  const zoom = SIZE_ZOOM[settings.notchSize];
+  const topGap = island ? ISLAND_TOP_GAP : 0;
+  // Capsule when collapsed; rounder corners as it grows.
+  const radius = view === "expanded" ? 28 : view === "toast" ? 24 : size.height / 2;
+
+  // Auto-dismiss the visible toast.
   useEffect(() => {
+    if (view !== "toast" || !toast) return;
+    const id = setTimeout(() => dismissToast(toast.id), toast.durationMs);
+    return () => clearTimeout(id);
+  }, [view, toast]);
+
+  // Tell the Rust hit-test where the notch is (window CSS px). The target size
+  // is reported immediately so the region never lags behind the animation.
+  useEffect(() => {
+    const width = size.width * zoom;
     reportHitRegion({
-      x: (window.innerWidth - size.width) / 2,
-      y: 0,
-      width: size.width,
-      height: size.height,
+      x: (window.innerWidth - width) / 2,
+      y: topGap,
+      width,
+      height: size.height * zoom,
       expanded: notch.expanded,
     });
-  }, [size.width, size.height, notch.expanded]);
+  }, [size.width, size.height, zoom, topGap, notch.expanded]);
 
   const { Panel } = notch.activeTab;
+  const contentKey = view === "expanded" ? "expanded" : view === "toast" ? `toast-${toast?.id}` : `idle-${idle}`;
 
   return (
-    <div className="flex h-full w-full justify-center">
+    <div className="flex h-full w-full justify-center" style={{ paddingTop: topGap }}>
+      {/* Sizing wrapper: animates the outline size. The glass surface fills it
+          and clips the content; the ears sit outside that clip. */}
       <motion.div
-        className="overflow-hidden bg-notch-bg text-white shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
-        style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+        data-theme={theme}
+        className="relative"
+        // `zoom` scales layout too, so the hit region above is simply size * zoom.
+        style={{ zoom }}
         initial={false}
-        animate={{
-          width: size.width,
-          height: size.height,
-          borderBottomLeftRadius: radius,
-          borderBottomRightRadius: radius,
-        }}
+        animate={{ width: size.width, height: size.height }}
         transition={SPRING}
-        onMouseEnter={() => notch.handleHover(true)}
-        onMouseLeave={() => notch.handleHover(false)}
+        // In Tauri the Rust hit-test is the single hover source. DOM events would
+        // disagree with it mid-animation (the region jumps to the target size
+        // while the div is still growing) and could close the notch under the cursor.
+        onMouseEnter={IN_TAURI ? undefined : () => notch.handleHover(true)}
+        onMouseLeave={IN_TAURI ? undefined : () => notch.handleHover(false)}
       >
-        <AnimatePresence mode="wait" initial={false}>
-          {notch.expanded ? (
+        {!island && (
+          <>
+            <span className="notch-ear notch-ear-left" style={EAR_STYLE} aria-hidden />
+            <span className="notch-ear notch-ear-right" style={EAR_STYLE} aria-hidden />
+          </>
+        )}
+        <motion.div
+          className={`glass absolute inset-0 overflow-hidden text-notch-fg ${island ? "" : "glass-flush"}`}
+          initial={false}
+          animate={{
+            borderTopLeftRadius: island ? radius : 0,
+            borderTopRightRadius: island ? radius : 0,
+            borderBottomLeftRadius: radius,
+            borderBottomRightRadius: radius,
+          }}
+          transition={SPRING}
+        >
+          {/* Views cross-fade on top of each other, anchored top-center, so the
+              next view is measured immediately and the outline morphs to it. */}
+          <AnimatePresence initial={false}>
             <motion.div
-              key="expanded"
-              className="flex h-full flex-col"
-              initial={{ opacity: 0, filter: "blur(6px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, filter: "blur(6px)" }}
-              transition={{ duration: 0.16 }}
+              key={contentKey}
+              className="absolute left-1/2 top-0"
+              style={{ x: "-50%", originY: 0 }}
+              initial={{ opacity: 0, scale: 0.9, filter: "blur(6px)" }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 0.97, filter: "blur(6px)" }}
+              transition={CONTENT_FADE}
             >
-              <TabBar activeId={notch.activeTab.id} onSelect={notch.selectTab} />
-              <div className="relative min-h-0 flex-1 px-5 pb-4">
-                <Suspense fallback={null}>
-                  <Panel requestClose={notch.close} />
-                </Suspense>
-              </div>
+              {view === "expanded" && (
+                <Measure id={sizeKey} onSize={onSize} style={{ width: notch.activeTab.width ?? DEFAULT_TAB_WIDTH }}>
+                  <TabBar activeId={notch.activeTab.id} onSelect={notch.selectTab} />
+                  <div className="px-6 pb-5 pt-1">
+                    <Suspense fallback={<div className="h-24" />}>
+                      <motion.div
+                        key={notch.activeTab.id}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={CONTENT_FADE}
+                      >
+                        <Panel requestClose={notch.close} />
+                      </motion.div>
+                    </Suspense>
+                  </div>
+                </Measure>
+              )}
+              {view === "toast" && toast && (
+                <Measure id={sizeKey} onSize={onSize}>
+                  <NotchToastView toast={toast} onDismiss={() => dismissToast(toast.id)} />
+                </Measure>
+              )}
+              {view === "collapsed" && (
+                <Measure id={sizeKey} onSize={onSize}>
+                  {idle === "pomodoro" && <PomodoroPill pomo={pomo} onClick={notch.open} />}
+                  {idle === "media" && (
+                    <MediaPill media={media} showLyrics={settings.pillShowsLyrics} onClick={notch.open} />
+                  )}
+                  {idle === "widget" && <CollapsedPill widgets={settings.idleWidgets} onClick={notch.open} />}
+                </Measure>
+              )}
             </motion.div>
-          ) : (
-            <motion.div
-              key="collapsed"
-              className="h-full"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-            >
-              <CollapsedPill onClick={notch.open} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </motion.div>
       </motion.div>
     </div>
   );

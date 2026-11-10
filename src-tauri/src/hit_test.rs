@@ -58,11 +58,16 @@ pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
         let mut was_inside = false;
         let mut button_was_down = false;
+        let mut pending_nudge = false;
 
         loop {
             std::thread::sleep(POLL_INTERVAL);
 
             let Some(window) = crate::window::main_window(&app) else { continue };
+            // Hidden from the tray: no hover, no click-outside.
+            if !window.is_visible().unwrap_or(true) {
+                continue;
+            }
             let region = app
                 .state::<HitTestState>()
                 .region
@@ -84,10 +89,27 @@ pub fn start(app: AppHandle) {
             let local_y = (cursor.y - origin.y) as f64 / scale;
             let inside = region.contains(local_x, local_y);
 
+            // Reconcile against the real window style every tick, not only on
+            // enter/leave: focus changes and clicks inside the notch can make the
+            // window drop WS_EX_TRANSPARENT, leaving the whole window blocking clicks.
+            if is_click_through(&window) != Some(!inside) {
+                let _ = window.set_ignore_cursor_events(!inside);
+                if inside {
+                    pending_nudge = true;
+                }
+            }
+
             if inside != was_inside {
                 was_inside = inside;
-                let _ = window.set_ignore_cursor_events(!inside);
                 let _ = app.emit_to(crate::window::MAIN_WINDOW_LABEL, EVENT_HOVER, inside);
+            }
+
+            // WebView2 ignores a resting cursor until the next WM_MOUSEMOVE once
+            // click-through is lifted, so a quick tap right after entering would be
+            // lost. Wait until the style change has landed, then send a zero move.
+            if pending_nudge && is_click_through(&window) == Some(false) {
+                pending_nudge = false;
+                nudge_cursor();
             }
 
             // High bit set = button currently held.
@@ -101,6 +123,34 @@ pub fn start(app: AppHandle) {
             button_was_down = button_down;
         }
     });
+}
+
+/// Whether the window currently has `WS_EX_TRANSPARENT` (clicks pass through).
+#[cfg(windows)]
+fn is_click_through(window: &tauri::WebviewWindow) -> Option<bool> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TRANSPARENT};
+    // Tauri's HWND comes from a different `windows` version; rewrap the raw pointer.
+    let hwnd = HWND(window.hwnd().ok()?.0);
+    let ex_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) } as u32;
+    Some(ex_style & WS_EX_TRANSPARENT.0 != 0)
+}
+
+/// Sends a zero-distance mouse move so WebView2 notices the cursor.
+#[cfg(windows)]
+fn nudge_cursor() {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEINPUT,
+    };
+    let input = INPUT {
+        r#type: INPUT_MOUSE,
+        Anonymous: INPUT_0 {
+            mi: MOUSEINPUT { dx: 0, dy: 0, mouseData: 0, dwFlags: MOUSEEVENTF_MOVE, time: 0, dwExtraInfo: 0 },
+        },
+    };
+    unsafe {
+        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
+    }
 }
 
 /// Non-Windows platforms: the window simply stays interactive.

@@ -1,20 +1,32 @@
-import { useNow } from "../shared/useNow";
-import { formatClock } from "../shared/format";
+import { Fragment } from "react";
+import { resolveIdleWidgets } from "./idle/idleWidgets";
 
 interface CollapsedPillProps {
+  /** Widget ids from the `idleWidgets` setting, in display order. */
+  widgets: string[];
   onClick: () => void;
 }
 
-/** Content of the collapsed notch. Idle widgets will be configurable later. */
-export function CollapsedPill({ onClick }: CollapsedPillProps) {
-  const now = useNow(1000);
+/**
+ * The idle notch: the chosen widgets side by side, and nothing more. Its
+ * width is exactly its content plus padding, so one widget makes a small
+ * pill and three make a wider one. With no widgets it is a small blank pill.
+ */
+export function CollapsedPill({ widgets, onClick }: CollapsedPillProps) {
+  const items = resolveIdleWidgets(widgets);
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-full w-full items-center justify-center text-[13px] font-semibold tabular-nums tracking-tight"
+      aria-label="Buka notch"
+      className="flex h-8 min-w-[64px] items-center justify-center gap-2 px-3.5 text-[13px] tracking-tight"
     >
-      {formatClock(now)}
+      {items.map(({ id, Component }, i) => (
+        <Fragment key={id}>
+          {i > 0 && <span className="h-1 w-1 rounded-full bg-notch-fg/30" aria-hidden />}
+          <Component />
+        </Fragment>
+      ))}
     </button>
   );
 }

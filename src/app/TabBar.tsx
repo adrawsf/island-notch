@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { TABS } from "./tabs/registry";
 
 interface TabBarProps {
@@ -5,27 +6,44 @@ interface TabBarProps {
   onSelect: (id: string) => void;
 }
 
+const BUTTON = 28;
+const GAP = 2;
+const PAD = 3;
+
+/** Glass segmented control; the active "lens" slides between tabs. */
 export function TabBar({ activeId, onSelect }: TabBarProps) {
+  const activeIndex = Math.max(0, TABS.findIndex((t) => t.id === activeId));
   return (
-    <nav className="flex shrink-0 items-center justify-center gap-1 px-4 pb-1 pt-2.5" aria-label="Tab notch">
-      {TABS.map(({ id, label, icon: Icon }) => {
-        const active = id === activeId;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onSelect(id)}
-            title={label}
-            aria-label={label}
-            aria-current={active ? "page" : undefined}
-            className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${
-              active ? "bg-white/15 text-white" : "text-notch-muted hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <Icon size={14} strokeWidth={2.2} />
-          </button>
-        );
-      })}
-    </nav>
+    <div className="flex justify-center px-4 pb-3 pt-3">
+      <nav className="glass-well relative flex rounded-full" style={{ padding: PAD, gap: GAP }} aria-label="Tab notch">
+        <motion.span
+          aria-hidden
+          className="glass-button absolute rounded-full"
+          style={{ top: PAD, width: BUTTON, height: BUTTON }}
+          initial={false}
+          animate={{ left: PAD + activeIndex * (BUTTON + GAP) }}
+          transition={{ type: "spring", stiffness: 500, damping: 34 }}
+        />
+        {TABS.map(({ id, label, icon: Icon }) => {
+          const active = id === activeId;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelect(id)}
+              title={label}
+              aria-label={label}
+              aria-current={active ? "page" : undefined}
+              className={`relative z-10 flex items-center justify-center rounded-full transition-colors ${
+                active ? "text-notch-fg" : "text-notch-muted hover:text-notch-fg"
+              }`}
+              style={{ width: BUTTON, height: BUTTON }}
+            >
+              <Icon size={14} strokeWidth={2.2} />
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

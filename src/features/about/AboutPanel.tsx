@@ -11,7 +11,7 @@ export default function AboutPanel(_props: TabPanelProps) {
   }, []);
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+    <div className="flex flex-col items-center gap-1 py-2 text-center">
       <span className="text-lg font-semibold">Island Notch</span>
       <span className="text-xs text-notch-muted">{version ? `Versi ${version}` : "Mode browser"}</span>
     </div>
