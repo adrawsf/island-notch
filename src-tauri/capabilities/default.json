@@ -1,12 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the notch and mini player windows",
-  "windows": ["main", "miniplayer"],
+  "description": "Permissions for the notch, mini player and teleprompter windows",
+  "windows": ["main", "miniplayer", "teleprompter"],
   "permissions": [
     "core:default",
     "core:window:default",
     "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
     "store:default"
   ]
 }

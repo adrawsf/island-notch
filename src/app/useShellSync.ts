@@ -15,6 +15,8 @@ import { useSettings } from "../core/settings/useSettings";
 import { showToast } from "../core/toast/toastQueue";
 import { prettyShortcut } from "../shared/format";
 import { IDLE_WIDGETS } from "./idle/idleWidgets";
+import { LYRICS_SOURCE_OPTIONS } from "../features/lyrics/sources";
+import type { LyricsSource } from "../features/lyrics/types";
 
 export function useShellSync() {
   const s = useSettings();
@@ -29,6 +31,8 @@ export function useShellSync() {
       idleWidgetOptions: IDLE_WIDGETS.map(({ id, label }) => ({ id, label })),
       idleShowsMedia: s.idleShowsMedia,
       pillShowsLyrics: s.pillShowsLyrics,
+      lyricsSource: s.lyricsSource,
+      lyricsSourceOptions: LYRICS_SOURCE_OPTIONS,
       shortcutEnabled: s.shortcutEnabled,
       toggleShortcut: s.toggleShortcut,
     }).then((result) => {
@@ -36,7 +40,7 @@ export function useShellSync() {
         showToast({ title: "Shortcut tidak bisa dipasang", body: result.shortcutError, durationMs: 6000 });
       }
     });
-  }, [s.monitor, s.notchShape, s.notchSize, s.theme, s.idleWidgets, s.idleShowsMedia, s.pillShowsLyrics, s.shortcutEnabled, s.toggleShortcut]);
+  }, [s.monitor, s.notchShape, s.notchSize, s.theme, s.idleWidgets, s.idleShowsMedia, s.pillShowsLyrics, s.lyricsSource, s.shortcutEnabled, s.toggleShortcut]);
 
   useEffect(() => onTraySelect(applyTraySelection), []);
 
@@ -78,6 +82,9 @@ function applyTraySelection(id: string) {
       break;
     case "mediaPill":
       updateSetting("idleShowsMedia", !getSettings().idleShowsMedia);
+      break;
+    case "lyricsSource":
+      updateSetting("lyricsSource", value as LyricsSource);
       break;
     case "lyricsPill":
       updateSetting("pillShowsLyrics", !getSettings().pillShowsLyrics);

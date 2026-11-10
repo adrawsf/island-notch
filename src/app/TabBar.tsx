@@ -31,7 +31,7 @@ export function TabBar({ activeId, onSelect }: TabBarProps) {
               key={id}
               type="button"
               onClick={() => onSelect(id)}
-              title={label}
+              data-tip={label}
               aria-label={label}
               aria-current={active ? "page" : undefined}
               className={`relative z-10 flex items-center justify-center rounded-full transition-colors ${

@@ -46,29 +46,6 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
-/* Media pill equalizer: static short bars when paused, bouncing while playing. */
-.eq-bar {
-  height: 30%;
-  transition: height 200ms ease;
-}
-
-.eq-playing .eq-bar {
-  animation: eq-bounce 900ms ease-in-out infinite;
-}
-
-.eq-playing .eq-bar:nth-child(2) { animation-delay: -300ms; }
-.eq-playing .eq-bar:nth-child(3) { animation-delay: -600ms; }
-.eq-playing .eq-bar:nth-child(4) { animation-delay: -150ms; }
-
-@keyframes eq-bounce {
-  0%, 100% { height: 25%; }
-  50% { height: 100%; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .eq-playing .eq-bar { animation: none; height: 70%; }
-}
-
 /* ---------- Liquid glass ---------- */
 
 /* The notch / mini player surface. Radius comes from the element itself.
@@ -188,4 +165,41 @@ body,
 
 [data-theme="dark"] .glass-well {
   background: rgb(0 0 0 / 0.24);
+}
+
+/* Slider on glass: thin recessed track, raised glass thumb. */
+.glass-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.glass-slider:disabled {
+  cursor: default;
+}
+
+.glass-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(var(--notch-fg) / 0.15);
+  box-shadow: inset 0 1px 2px rgb(var(--glass-shadow) / 0.3);
+}
+
+.glass-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 999px;
+  background: rgb(var(--notch-fg));
+  box-shadow:
+    0 1px 4px rgb(var(--glass-shadow) / 0.45),
+    inset 0 -1px 1px rgb(var(--glass-shadow) / 0.2);
+  transition: transform 120ms ease;
+}
+
+.glass-slider:not(:disabled):active::-webkit-slider-thumb {
+  transform: scale(1.15);
 }

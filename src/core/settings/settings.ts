@@ -32,18 +32,36 @@ export interface AppSettings {
   idleWidgets: string[];
   /** While media plays, the pill shows the track instead of the idle widget. */
   idleShowsMedia: boolean;
-  /** The media pill shows the current synced lyric line (fetched from LRCLIB). */
+  /** The media pill shows the current synced lyric line (from the chosen lyrics source). */
   pillShowsLyrics: boolean;
+  /** The mini player shows the current and next lyric line. */
+  miniPlayerLyrics: boolean;
+  /** Compact mini player: cover + lyrics only. */
+  miniPlayerCompact: boolean;
+  /** Where lyrics come from: "auto" or one provider id (see src/features/lyrics/sources.ts). */
+  lyricsSource: "auto" | "lrclib" | "netease" | "kugou" | "qqmusic" | "genius";
   /** The Media tab shows lyrics instead of track details. */
   mediaLyricsOpen: boolean;
   /** Global shortcut that opens/closes the notch. */
   shortcutEnabled: boolean;
   /** Shortcut in the global-shortcut plugin format, e.g. "Control+Alt+N". */
   toggleShortcut: string;
+  /** Pomodoro moves to the next phase by itself; off = wait and count the extra time. */
+  pomodoroAutoAdvance: boolean;
   /** Pomodoro phase lengths in minutes. */
   pomodoroFocusMin: number;
   pomodoroShortBreakMin: number;
   pomodoroLongBreakMin: number;
+  /** Ambient sound during focus sessions ("none" = silent). */
+  ambienceSound: "none" | "rain" | "ocean" | "fire" | "wind" | "brown" | "pink" | "white";
+  /** Ambience volume, 0-1. */
+  ambienceVolume: number;
+  /** Teleprompter reading text size (px), scroll speed (px/s) and countdown (s). */
+  teleprompterFontSize: number;
+  teleprompterSpeed: number;
+  teleprompterCountdown: number;
+  /** Keep the teleprompter out of screenshots, recordings and screen sharing. */
+  teleprompterHideFromCapture: boolean;
   /** The first-run hint toast has been shown. */
   welcomeShown: boolean;
 }
@@ -63,6 +81,10 @@ const isIdList: Validator<string[]> = (v): v is string[] =>
   v.length <= 8 &&
   v.every((x) => typeof x === "string" && x.length > 0 && x.length <= 40) &&
   new Set(v).size === v.length;
+const inRange =
+  (min: number, max: number): Validator<number> =>
+  (v): v is number =>
+    typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
 const oneOf =
   <T extends string>(...values: T[]): Validator<T> =>
   (v): v is T =>
@@ -80,11 +102,21 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   idleShowsMedia: { default: true, valid: isBoolean },
   pillShowsLyrics: { default: true, valid: isBoolean },
   mediaLyricsOpen: { default: false, valid: isBoolean },
+  lyricsSource: { default: "auto", valid: oneOf("auto", "lrclib", "netease", "kugou", "qqmusic", "genius") },
+  miniPlayerLyrics: { default: true, valid: isBoolean },
+  miniPlayerCompact: { default: false, valid: isBoolean },
   shortcutEnabled: { default: true, valid: isBoolean },
   toggleShortcut: { default: "Control+Alt+N", valid: isNonEmptyString },
+  pomodoroAutoAdvance: { default: true, valid: isBoolean },
   pomodoroFocusMin: { default: 25, valid: isMinutes },
   pomodoroShortBreakMin: { default: 5, valid: isMinutes },
   pomodoroLongBreakMin: { default: 15, valid: isMinutes },
+  ambienceSound: { default: "none", valid: oneOf("none", "rain", "ocean", "fire", "wind", "brown", "pink", "white") },
+  ambienceVolume: { default: 0.5, valid: inRange(0, 1) },
+  teleprompterFontSize: { default: 28, valid: inRange(14, 72) },
+  teleprompterSpeed: { default: 40, valid: inRange(10, 200) },
+  teleprompterCountdown: { default: 3, valid: inRange(0, 10) },
+  teleprompterHideFromCapture: { default: true, valid: isBoolean },
   welcomeShown: { default: false, valid: isBoolean },
 };
 

@@ -9,6 +9,7 @@ mod media;
 mod miniplayer;
 mod shell;
 mod shortcut;
+mod teleprompter;
 mod tray;
 mod window;
 
@@ -36,10 +37,15 @@ pub fn run() {
             media::media_get_state,
             media::media_control,
             media::media_seek,
-            lyrics::lrclib_request,
+            lyrics::lyrics_request,
             miniplayer::mini_player_toggle,
             miniplayer::mini_player_hide,
             miniplayer::mini_player_visible,
+            miniplayer::mini_player_fit,
+            teleprompter::teleprompter_open,
+            teleprompter::teleprompter_close,
+            teleprompter::teleprompter_visible,
+            teleprompter::teleprompter_set_capture_excluded,
             window::reposition_main_window,
         ])
         .run(tauri::generate_context!())

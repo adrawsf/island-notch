@@ -32,11 +32,25 @@ export interface PersistedValue<T> {
   use(): T;
 }
 
+export interface PersistedValueOptions<T> {
+  /**
+   * Runs once when `key` has never been saved: builds the first value from
+   * older data (read any key with `read`). Return null to use the fallback.
+   * The result is saved, so it never runs again.
+   */
+  migrate?: (read: (key: string) => Promise<unknown>) => Promise<T | null>;
+}
+
 /**
  * `validate` receives raw disk data and must return a valid T or null (null
  * keeps the fallback, so corrupt or missing data never breaks the feature).
  */
-export function persistedValue<T>(key: string, fallback: T, validate: (raw: unknown) => T | null): PersistedValue<T> {
+export function persistedValue<T>(
+  key: string,
+  fallback: T,
+  validate: (raw: unknown) => T | null,
+  options: PersistedValueOptions<T> = {},
+): PersistedValue<T> {
   let current = fallback;
   const listeners = new Set<() => void>();
   // Our own writes come back as change events, possibly after newer local
@@ -48,7 +62,15 @@ export function persistedValue<T>(key: string, fallback: T, validate: (raw: unkn
     dataStore()
       .then(async (store) => {
         const raw = await store.get(key);
-        const valid = raw === undefined ? null : validate(raw);
+        let valid = raw === undefined ? null : validate(raw);
+        if (raw === undefined && options.migrate) {
+          const migrated = await options.migrate((k) => store.get(k));
+          valid = migrated === null ? null : validate(migrated);
+          if (valid !== null) {
+            ownWrites.add(stableJson(valid));
+            await store.set(key, valid);
+          }
+        }
         if (valid !== null) {
           current = valid;
           emit();

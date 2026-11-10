@@ -10,6 +10,7 @@ import { onClickOutside, onNotchHover, onToggleRequest } from "../core/notch/not
 import { updateSetting } from "../core/settings/settings";
 import { useSettings } from "../core/settings/useSettings";
 import { findTab } from "./tabs/registry";
+import { hideTooltip } from "../shared/ui/TooltipLayer";
 
 const HOVER_OPEN_DELAY_MS = 120;
 
@@ -53,7 +54,10 @@ export function useNotchController({ suppressHoverOpen = false, tabOnOpen = null
   const setOpen = useCallback((next: boolean) => {
     if (next && !expandedRef.current && tabOnOpenRef.current) setActiveTabId(tabOnOpenRef.current);
     // Drop keyboard focus on close so typing never goes into a hidden field.
-    if (!next) (document.activeElement as HTMLElement | null)?.blur?.();
+    if (!next) {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      hideTooltip();
+    }
     expandedRef.current = next;
     setExpanded(next);
   }, []);
@@ -76,6 +80,7 @@ export function useNotchController({ suppressHoverOpen = false, tabOnOpen = null
   const handleHover = useCallback(
     (inside: boolean) => {
       clearTimer();
+      if (!inside) hideTooltip();
       const { expandOnHover, closeDelayMs } = settingsRef.current;
       if (inside) {
         if (expandOnHover && !suppressHoverOpenRef.current) {

@@ -16,11 +16,14 @@ export type ShellConfig = Pick<
   | "idleWidgets"
   | "idleShowsMedia"
   | "pillShowsLyrics"
+  | "lyricsSource"
   | "shortcutEnabled"
   | "toggleShortcut"
 > & {
   /** Every available idle widget, so the tray can list them (the registry lives in the frontend). */
   idleWidgetOptions: { id: string; label: string }[];
+  /** Every lyrics source, so the tray can list them. */
+  lyricsSourceOptions: { id: string; label: string }[];
 };
 
 export interface ApplyResult {

@@ -22,15 +22,18 @@ pub struct ShellConfig {
     /// Idle widget ids shown in the pill, in order.
     pub idle_widgets: Vec<String>,
     /// Every available idle widget (the registry lives in the frontend).
-    pub idle_widget_options: Vec<IdleWidgetOption>,
+    pub idle_widget_options: Vec<MenuOption>,
     pub idle_shows_media: bool,
     pub pill_shows_lyrics: bool,
+    pub lyrics_source: String,
+    /// Every lyrics source (the registry lives in the frontend).
+    pub lyrics_source_options: Vec<MenuOption>,
     pub shortcut_enabled: bool,
     pub toggle_shortcut: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-pub struct IdleWidgetOption {
+pub struct MenuOption {
     pub id: String,
     pub label: String,
 }

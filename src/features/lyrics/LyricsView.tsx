@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { mediaSeek, type MediaState } from "../media/mediaBridge";
-import { useMediaPosition } from "../media/useMedia";
+import { useLyricPosition } from "./useLyrics";
 import { currentLineIndex } from "./lyricsText";
 import type { LyricsResult } from "./useLyrics";
 
@@ -43,7 +43,7 @@ function SyncedLyrics({
   lines: { timeMs: number; text: string }[];
   className: string;
 }) {
-  const position = useMediaPosition(media, 200);
+  const position = useLyricPosition(media);
   const current = currentLineIndex(lines, position);
   const containerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<(HTMLButtonElement | null)[]>([]);

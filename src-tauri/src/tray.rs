@@ -125,6 +125,14 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         idle_menu = idle_menu.item(&item);
     }
 
+    let mut lyrics_menu = SubmenuBuilder::new(app, "Sumber lirik");
+    for option in &config.lyrics_source_options {
+        let item = CheckMenuItemBuilder::with_id(format!("lyricsSource:{}", option.id), &option.label)
+            .checked(config.lyrics_source == option.id)
+            .build(app)?;
+        lyrics_menu = lyrics_menu.item(&item);
+    }
+
     let shortcut_label = format!("Shortcut buka/tutup ({})", pretty_shortcut(&config.toggle_shortcut));
 
     MenuBuilder::new(app)
@@ -145,8 +153,9 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
                 .checked(config.idle_shows_media)
                 .build(app)?,
         )
+        .item(&lyrics_menu.build()?)
         .item(
-            &CheckMenuItemBuilder::with_id(ID_LYRICS_PILL, "Lirik di pill (LRCLIB)")
+            &CheckMenuItemBuilder::with_id(ID_LYRICS_PILL, "Lirik di pill")
                 .checked(config.pill_shows_lyrics)
                 .enabled(config.idle_shows_media)
                 .build(app)?,

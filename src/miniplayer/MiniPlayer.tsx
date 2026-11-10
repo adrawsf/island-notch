@@ -1,22 +1,61 @@
-import type { PointerEvent } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { isTauri } from "@tauri-apps/api/core";
-import { Music, X } from "lucide-react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { Maximize2, MicVocal, Minimize2, Music, X } from "lucide-react";
+import { updateSetting } from "../core/settings/settings";
 import { useSettings } from "../core/settings/useSettings";
 import { useResolvedTheme } from "../shared/useResolvedTheme";
 import { Artwork } from "../features/media/Artwork";
 import { iconButton, MediaProgress, TransportButtons } from "../features/media/MediaControls";
+import { mediaControl } from "../features/media/mediaBridge";
 import { hideMiniPlayer } from "../features/media/miniPlayerBridge";
 import { useMedia } from "../features/media/useMedia";
+import { LyricsPair } from "../features/lyrics/LyricsPair";
+import { useLyrics } from "../features/lyrics/useLyrics";
 
 /** Elements that handle their own pointer input instead of dragging the window. */
 const INTERACTIVE = "button, [role='slider']";
+/** Transparent margin around the card so the glass shadow is not clipped (px, each side). */
+const MARGIN = 8;
+/** Card width per layout (CSS px); the window is sized to the card. */
+const CARD_WIDTH = { full: 360, compact: 300 } as const;
 
-/** Floating card: cover, title, progress and controls. Drag anywhere else to move. */
+/**
+ * Floating card. Full: cover, title, progress, controls and (optionally) the
+ * current lyrics. Compact: just the cover and the lyrics (or the title when
+ * there are none); clicking the cover plays/pauses. Drag anywhere else to
+ * move. The window is sized to the card, keeping its bottom-right corner.
+ */
 export function MiniPlayer() {
   const media = useMedia();
-  const { theme: themeMode } = useSettings();
-  const theme = useResolvedTheme(themeMode);
+  const settings = useSettings();
+  const theme = useResolvedTheme(settings.theme);
+  const compact = settings.miniPlayerCompact;
+  // Compact mode exists to show lyrics, so it always fetches them.
+  const lyrics = useLyrics(media, settings.miniPlayerLyrics || compact);
+  const synced = lyrics.status === "found" && lyrics.lyrics.synced ? lyrics.lyrics : null;
+  const showLyrics = media.active && settings.miniPlayerLyrics && synced !== null;
+  const cardWidth = compact ? CARD_WIDTH.compact : CARD_WIDTH.full;
+
+  // Fit the window to the card.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || !isTauri()) return;
+    let last = "";
+    const fit = () => {
+      const width = Math.ceil(card.offsetWidth + MARGIN * 2);
+      const height = Math.ceil(card.offsetHeight + MARGIN * 2);
+      const key = `${width}x${height}`;
+      if (key === last) return;
+      last = key;
+      invoke("mini_player_fit", { width, height }).catch((err) => console.error("[miniplayer] fit", err));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || (e.target as HTMLElement).closest(INTERACTIVE) || !isTauri()) return;
@@ -26,40 +65,110 @@ export function MiniPlayer() {
   };
 
   return (
-    // The window has an 8px transparent margin so the glass shadow is not clipped.
-    <div className="h-full w-full p-2">
+    <div style={{ padding: MARGIN, width: "max-content" }}>
       <div
+        ref={cardRef}
         data-theme={theme}
         onPointerDown={onPointerDown}
-        className="glass group relative flex h-full w-full items-center gap-3 overflow-hidden rounded-[26px] p-3 text-notch-fg"
+        style={{ width: cardWidth }}
+        className={`glass group relative flex flex-col overflow-hidden text-notch-fg ${
+          compact ? "rounded-[22px] p-2" : "gap-2.5 rounded-[26px] p-3"
+        }`}
       >
-        <button
-          type="button"
-          onClick={hideMiniPlayer}
-          className={`${iconButton} absolute right-2 top-2 h-6 w-6 text-notch-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100`}
-          aria-label="Tutup mini player"
+        <div
+          className={`absolute z-10 flex gap-0.5 rounded-full bg-[rgb(var(--glass-tint)/0.92)] p-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
+            compact ? "right-1 top-1/2 -translate-y-1/2 flex-col" : "right-2 top-2"
+          }`}
         >
-          <X size={14} />
-        </button>
+          <button
+            type="button"
+            onClick={() => updateSetting("miniPlayerCompact", !compact)}
+            className={`${iconButton} h-6 w-6 text-notch-muted`}
+            aria-label={compact ? "Tampilan penuh" : "Tampilan ringkas"}
+            data-tip={compact ? "Tampilan penuh" : "Ringkas: cover + lirik"}
+          >
+            {compact ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
+          </button>
+          {media.active && !compact && (
+            <button
+              type="button"
+              onClick={() => updateSetting("miniPlayerLyrics", !settings.miniPlayerLyrics)}
+              className={`${iconButton} h-6 w-6 ${settings.miniPlayerLyrics ? "glass-button text-notch-fg" : "text-notch-muted"}`}
+              aria-pressed={settings.miniPlayerLyrics}
+              aria-label={settings.miniPlayerLyrics ? "Sembunyikan lirik" : "Tampilkan lirik"}
+              data-tip="Lirik"
+            >
+              <MicVocal size={12} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={hideMiniPlayer}
+            className={`${iconButton} h-6 w-6 text-notch-muted`}
+            aria-label="Tutup mini player"
+          >
+            <X size={14} />
+          </button>
+        </div>
 
-        {media.active ? (
-          <>
-            <Artwork src={media.artwork} className="h-24 w-24 shrink-0 rounded-[18px] shadow-md" iconSize={28} />
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-5">
-              <div className="min-w-0">
-                <div className="truncate text-[13px] font-semibold leading-tight" title={media.title}>
-                  {media.title || "Tanpa judul"}
+        {media.active && compact ? (
+          <div className="flex items-center gap-3 pr-7">
+            <button
+              type="button"
+              onClick={() => mediaControl("playPause")}
+              disabled={!media.canPlayPause}
+              className="shrink-0 rounded-[14px] transition-transform active:scale-95"
+              aria-label={media.isPlaying ? "Jeda" : "Putar"}
+              data-tip={media.isPlaying ? "Klik untuk jeda" : "Klik untuk putar"}
+            >
+              <Artwork
+                src={media.artwork}
+                className={`h-14 w-14 rounded-[14px] shadow-md transition-opacity ${media.isPlaying ? "" : "opacity-50"}`}
+                iconSize={20}
+              />
+            </button>
+            <div className="min-w-0 flex-1">
+              {synced ? (
+                <LyricsPair media={media} lyrics={synced} />
+              ) : (
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-semibold leading-5" data-tip-truncated data-tip={media.title}>
+                    {media.title || "Tanpa judul"}
+                  </div>
+                  <div className="truncate text-xs leading-5 text-notch-muted">
+                    {lyrics.status === "loading" ? "Mencari lirik…" : media.artist}
+                  </div>
                 </div>
-                {media.artist && <div className="truncate text-xs text-notch-muted">{media.artist}</div>}
-              </div>
-              <MediaProgress media={media} showTimes={false} />
-              <div className="flex items-center justify-center gap-2">
-                <TransportButtons media={media} compact />
+              )}
+            </div>
+          </div>
+        ) : media.active ? (
+          <>
+            <div className="flex items-center gap-3">
+              <Artwork src={media.artwork} className="h-[88px] w-[88px] shrink-0 rounded-[18px] shadow-md" iconSize={26} />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-10">
+                <div className="min-w-0">
+                  <div className="truncate text-[13px] font-semibold leading-tight" data-tip-truncated data-tip={media.title}>
+                    {media.title || "Tanpa judul"}
+                  </div>
+                  {media.artist && <div className="truncate text-xs text-notch-muted">{media.artist}</div>}
+                </div>
+                <MediaProgress media={media} showTimes={false} />
+                <div className="flex items-center justify-center gap-2">
+                  <TransportButtons media={media} compact />
+                </div>
               </div>
             </div>
+            {showLyrics && (
+              <div className="glass-well rounded-2xl px-3.5 py-2">
+                <LyricsPair media={media} lyrics={synced} />
+              </div>
+            )}
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center gap-2 text-sm text-notch-muted">
+          <div
+            className={`flex items-center justify-center gap-2 text-sm text-notch-muted ${compact ? "h-14 pr-7" : "h-[88px]"}`}
+          >
             <Music size={18} strokeWidth={1.8} />
             Tidak ada media yang diputar
           </div>

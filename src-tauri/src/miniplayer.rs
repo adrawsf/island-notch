@@ -3,7 +3,7 @@
 //! Created on first open and hidden (not destroyed) on close, so it keeps its
 //! position for the session. It never takes focus from the app you are using.
 
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 use crate::window::WEBVIEW_BROWSER_ARGS;
 
@@ -120,6 +120,28 @@ pub fn mini_player_hide(app: AppHandle) {
             eprintln!("[miniplayer] {err}");
         }
     });
+}
+
+/// Resizes the window to fit its card (logical px), keeping the bottom-right
+/// corner where it is so the player grows up and to the left from its corner.
+#[tauri::command]
+pub fn mini_player_fit(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
+    let Some(w) = window(&app) else { return Ok(()) };
+    let width = width.clamp(160.0, 600.0);
+    let height = height.clamp(56.0, 400.0);
+    let scale = w.scale_factor().map_err(|e| e.to_string())?;
+    let pos = w.outer_position().map_err(|e| e.to_string())?;
+    let size = w.outer_size().map_err(|e| e.to_string())?;
+    let new_width = (width * scale).round() as i32;
+    let new_height = (height * scale).round() as i32;
+    if (new_width - size.width as i32).abs() <= 1 && (new_height - size.height as i32).abs() <= 1 {
+        return Ok(());
+    }
+    let right = pos.x + size.width as i32;
+    let bottom = pos.y + size.height as i32;
+    w.set_size(LogicalSize::new(width, height)).map_err(|e| e.to_string())?;
+    w.set_position(PhysicalPosition::new(right - new_width, bottom - new_height))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
