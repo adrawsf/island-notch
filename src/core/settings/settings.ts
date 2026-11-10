@@ -32,6 +32,8 @@ export interface AppSettings {
   idleWidgets: string[];
   /** While media plays, the pill shows the track instead of the idle widget. */
   idleShowsMedia: boolean;
+  /** Films and other video (browser tabs without an artist) are not treated as music. */
+  ignoreVideo: boolean;
   /** The media pill shows the current synced lyric line (from the chosen lyrics source). */
   pillShowsLyrics: boolean;
   /** The mini player shows the current and next lyric line. */
@@ -102,6 +104,7 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   theme: { default: "dark", valid: oneOf("dark", "light", "auto") },
   idleWidgets: { default: ["clock"], valid: isIdList },
   idleShowsMedia: { default: true, valid: isBoolean },
+  ignoreVideo: { default: true, valid: isBoolean },
   pillShowsLyrics: { default: true, valid: isBoolean },
   mediaLyricsOpen: { default: false, valid: isBoolean },
   lyricsSource: { default: "auto", valid: oneOf("auto", "lrclib", "netease", "kugou", "qqmusic", "genius") },

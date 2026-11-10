@@ -25,7 +25,8 @@ export function LyricsView({ media, result, className = "" }: LyricsViewProps) {
   if (lyrics.instrumental) {
     return <div className={`flex items-center justify-center text-sm text-notch-muted ${className}`}>Instrumental</div>;
   }
-  return lyrics.synced ? (
+  // Without a playback position (tab-only media) timing is unknown: show text.
+  return lyrics.synced && !media.tabOnly ? (
     <SyncedLyrics media={media} lines={lyrics.lines} className={className} />
   ) : (
     <div className={`overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-notch-muted ${className}`}>

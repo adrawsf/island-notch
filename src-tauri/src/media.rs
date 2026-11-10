@@ -32,6 +32,9 @@ pub struct MediaState {
     pub can_seek: bool,
     /// Cover art as a data URI.
     pub artwork: Option<String>,
+    /// Read from a browser tab's name because Windows reports no music
+    /// session for it: no timeline, controls or artwork.
+    pub tab_only: bool,
 }
 
 impl MediaState {
@@ -54,6 +57,13 @@ impl MediaState {
 #[derive(Default)]
 pub struct MediaStore {
     last: Mutex<MediaState>,
+}
+
+impl MediaStore {
+    /// App id and title of the session shown last.
+    pub fn source(&self) -> (String, String) {
+        self.last.lock().map(|s| (s.app_id.clone(), s.title.clone())).unwrap_or_default()
+    }
 }
 
 /// Latest state, for a frontend that (re)loads after the last event.
@@ -98,25 +108,90 @@ mod smtc {
             .unwrap_or(Status::Closed)
     }
 
-    /// Playing session first, then the one we showed last, then Windows' pick.
-    pub fn pick_session(manager: &Manager, last_app_id: &str) -> Option<Session> {
+    /// Which session to show, in order: one that is playing, the one shown
+    /// last, Windows' pick (the one used last), then any other open one with
+    /// paused players first. With `skip_video`, films and other video are
+    /// passed over (see `is_video`), so music paused for a film still shows
+    /// even though the film was clicked last.
+    pub fn pick_session(manager: &Manager, last_app_id: &str, skip_video: bool) -> Option<Session> {
         let sessions: Vec<Session> = manager.GetSessions().map(|v| v.into_iter().collect()).unwrap_or_default();
-        let open = |s: &&Session| status(s) != Status::Closed && !is_ignored(s);
-        if let Some(s) = sessions.iter().filter(open).find(|s| status(s) == Status::Playing) {
-            return Some(s.clone());
+        let candidates: Vec<&Session> = sessions
+            .iter()
+            .filter(|s| status(s) != Status::Closed && !is_ignored(s, skip_video))
+            .collect();
+        if let Some(s) = candidates.iter().find(|s| status(s) == Status::Playing) {
+            return Some((*s).clone());
         }
         if !last_app_id.is_empty() {
-            if let Some(s) = sessions.iter().filter(open).find(|s| app_id(s) == last_app_id) {
-                return Some(s.clone());
+            if let Some(s) = candidates.iter().find(|s| app_id(s) == last_app_id) {
+                return Some((*s).clone());
             }
         }
-        manager.GetCurrentSession().ok().filter(|s| status(s) != Status::Closed && !is_ignored(s))
+        if let Ok(current) = manager.GetCurrentSession() {
+            let current_id = app_id(&current);
+            if let Some(s) = candidates.iter().find(|s| app_id(s) == current_id) {
+                return Some((*s).clone());
+            }
+        }
+        candidates
+            .iter()
+            .find(|s| status(s) == Status::Paused)
+            .or_else(|| candidates.first())
+            .map(|s| (*s).clone())
     }
 
-    /// Apps that register SMTC sessions without being media players.
-    fn is_ignored(session: &Session) -> bool {
+    /// Sessions the notch should not treat as music.
+    fn is_ignored(session: &Session, skip_video: bool) -> bool {
         let id = app_id(session).to_lowercase();
-        id.contains("screensketch") || id.contains("snipping")
+        // Apps that register SMTC sessions without being media players.
+        if id.contains("screensketch") || id.contains("snipping") {
+            return true;
+        }
+        skip_video && is_video(session, &id)
+    }
+
+    /// Words that identify a browser in an SMTC app id ("Chrome", "MSEdge",
+    /// "TheBrowserCompany.Arc_x!Arc"...). Firefox registers under a hash.
+    const BROWSER_WORDS: &[&str] = &[
+        "chrome", "msedge", "microsoftedge", "brave", "firefox", "308046b0af4a39cb", "opera", "vivaldi", "arc", "zen",
+        "chromium", "thorium", "floorp", "librewolf", "waterfox",
+    ];
+
+    /// Compared word by word, so short names like "arc" never match inside
+    /// other words ("search").
+    fn is_browser_id(id_lower: &str) -> bool {
+        id_lower
+            .split(|c: char| !c.is_ascii_alphanumeric())
+            .any(|word| BROWSER_WORDS.contains(&word))
+    }
+
+    /// A film or other video rather than music:
+    /// - the app says so (desktop video players report the Video type), or
+    /// - a browser tab without an artist. Music sites (YouTube Music, Spotify,
+    ///   SoundCloud...) fill in the artist through the Media Session API;
+    ///   film and video sites usually leave it empty, and browsers report
+    ///   every tab as Music, so the missing artist is the reliable signal.
+    fn is_video(session: &Session, id_lower: &str) -> bool {
+        use windows::Media::MediaPlaybackType;
+        let reported_video = session
+            .GetPlaybackInfo()
+            .and_then(|p| p.PlaybackType())
+            .and_then(|t| t.Value())
+            .map(|t| t == MediaPlaybackType::Video)
+            .unwrap_or(false);
+        if reported_video {
+            return true;
+        }
+        if !is_browser_id(id_lower) {
+            return false;
+        }
+        let artist = session
+            .TryGetMediaPropertiesAsync()
+            .and_then(|op| op.get())
+            .and_then(|p| p.Artist())
+            .map(|a| a.to_string())
+            .unwrap_or_default();
+        artist.trim().is_empty()
     }
 
     pub fn app_id(session: &Session) -> String {
@@ -172,6 +247,7 @@ mod smtc {
             can_previous: flag(&|c| c.IsPreviousEnabled()),
             can_seek: flag(&|c| c.IsPlaybackPositionEnabled()) && duration_ms > 0,
             artwork: None,
+            tab_only: false,
         })
     }
 
@@ -227,6 +303,11 @@ pub fn start(app: AppHandle) {
         let mut ticks_since_change: u32 = 0;
         let mut artwork: Option<String> = None;
         let mut previous_artwork: Option<String> = None;
+        // Browser-tab fallback, rescanned every few ticks while Windows
+        // reports no music (UI Automation is too heavy for every tick).
+        const TAB_SCAN_EVERY: u32 = 6;
+        let mut tab_scan_ticks = TAB_SCAN_EVERY;
+        let mut tab_state: Option<MediaState> = None;
 
         loop {
             std::thread::sleep(POLL_INTERVAL);
@@ -235,11 +316,36 @@ pub fn start(app: AppHandle) {
             }
             let Some(mgr) = &manager else { continue };
 
-            let session = smtc::pick_session(mgr, &last_emitted.app_id);
+            let session = smtc::pick_session(mgr, &last_emitted.app_id, ignore_video(&app));
             let mut state = match session.as_ref().and_then(smtc::read_state) {
                 Some(s) => s,
                 None => MediaState { sampled_at_ms: smtc::now_ms(), ..Default::default() },
             };
+
+            // Chrome reports only its most recently used media to Windows, so
+            // music in one tab disappears once a film in another was clicked.
+            // Then read the playing music tab's name instead.
+            if state.active {
+                tab_state = None;
+                tab_scan_ticks = TAB_SCAN_EVERY;
+            } else {
+                tab_scan_ticks += 1;
+                if tab_scan_ticks >= TAB_SCAN_EVERY {
+                    tab_scan_ticks = 0;
+                    tab_state = crate::media_source::find_music_tab().map(|tab| MediaState {
+                        active: true,
+                        app_id: tab.app_id,
+                        title: tab.title,
+                        artist: tab.artist,
+                        is_playing: true,
+                        tab_only: true,
+                        ..Default::default()
+                    });
+                }
+                if let Some(tab) = &tab_state {
+                    state = MediaState { sampled_at_ms: state.sampled_at_ms, ..tab.clone() };
+                }
+            }
 
             if state.active {
                 let key = format!("{}\u{1f}{}\u{1f}{}", state.app_id, state.title, state.artist);
@@ -285,11 +391,19 @@ pub fn start(app: AppHandle) {
 #[cfg(not(windows))]
 pub fn start(_app: AppHandle) {}
 
+/// The "ignore video" setting, as last pushed by the frontend (on by default).
+fn ignore_video(app: &AppHandle) -> bool {
+    app.state::<crate::shell::ShellState>()
+        .current()
+        .map(|c| c.ignore_video)
+        .unwrap_or(true)
+}
+
 /// `playPause`, `next` or `previous` on the active session.
 #[tauri::command]
-pub async fn media_control(store: State<'_, MediaStore>, action: String) -> Result<(), String> {
+pub async fn media_control(app: AppHandle, store: State<'_, MediaStore>, action: String) -> Result<(), String> {
     let last_app_id = store.last.lock().map(|s| s.app_id.clone()).unwrap_or_default();
-    run_on_session(last_app_id, move |session| {
+    run_on_session(last_app_id, ignore_video(&app), move |session| {
         let op = match action.as_str() {
             "playPause" => session.TryTogglePlayPauseAsync(),
             "next" => session.TrySkipNextAsync(),
@@ -302,9 +416,9 @@ pub async fn media_control(store: State<'_, MediaStore>, action: String) -> Resu
 }
 
 #[tauri::command]
-pub async fn media_seek(store: State<'_, MediaStore>, position_ms: u64) -> Result<(), String> {
+pub async fn media_seek(app: AppHandle, store: State<'_, MediaStore>, position_ms: u64) -> Result<(), String> {
     let last_app_id = store.last.lock().map(|s| s.app_id.clone()).unwrap_or_default();
-    run_on_session(last_app_id, move |session| {
+    run_on_session(last_app_id, ignore_video(&app), move |session| {
         let start = session
             .GetTimelineProperties()
             .and_then(|t| t.StartTime())
@@ -321,7 +435,7 @@ pub async fn media_seek(store: State<'_, MediaStore>, position_ms: u64) -> Resul
 }
 
 #[cfg(windows)]
-async fn run_on_session<F>(last_app_id: String, f: F) -> Result<(), String>
+async fn run_on_session<F>(last_app_id: String, skip_video: bool, f: F) -> Result<(), String>
 where
     F: FnOnce(&windows::Media::Control::GlobalSystemMediaTransportControlsSession) -> Result<(), String>
         + Send
@@ -330,7 +444,7 @@ where
     tauri::async_runtime::spawn_blocking(move || {
         smtc::init_com();
         let manager = smtc::request_manager().ok_or("SMTC unavailable")?;
-        let session = smtc::pick_session(&manager, &last_app_id).ok_or("no media session")?;
+        let session = smtc::pick_session(&manager, &last_app_id, skip_video).ok_or("no media session")?;
         f(&session)
     })
     .await
@@ -338,6 +452,6 @@ where
 }
 
 #[cfg(not(windows))]
-async fn run_on_session<F>(_last_app_id: String, _f: F) -> Result<(), String> {
+async fn run_on_session<F>(_last_app_id: String, _skip_video: bool, _f: F) -> Result<(), String> {
     Err("media control is only supported on Windows".into())
 }

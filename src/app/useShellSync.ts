@@ -30,6 +30,7 @@ export function useShellSync() {
       idleWidgets: s.idleWidgets,
       idleWidgetOptions: IDLE_WIDGETS.map(({ id, label }) => ({ id, label })),
       idleShowsMedia: s.idleShowsMedia,
+      ignoreVideo: s.ignoreVideo,
       pillShowsLyrics: s.pillShowsLyrics,
       lyricsSource: s.lyricsSource,
       lyricsSourceOptions: LYRICS_SOURCE_OPTIONS,
@@ -41,7 +42,7 @@ export function useShellSync() {
         showToast({ title: "Shortcut tidak bisa dipasang", body: result.shortcutError, durationMs: 6000 });
       }
     });
-  }, [s.monitor, s.notchShape, s.notchSize, s.theme, s.idleWidgets, s.idleShowsMedia, s.pillShowsLyrics, s.lyricsSource, s.shrinkForBrowsers, s.shortcutEnabled, s.toggleShortcut]);
+  }, [s.monitor, s.notchShape, s.notchSize, s.theme, s.idleWidgets, s.idleShowsMedia, s.ignoreVideo, s.pillShowsLyrics, s.lyricsSource, s.shrinkForBrowsers, s.shortcutEnabled, s.toggleShortcut]);
 
   useEffect(() => onTraySelect(applyTraySelection), []);
 
@@ -80,6 +81,9 @@ function applyTraySelection(id: string) {
       break;
     case "idle":
       toggleIdleWidget(value);
+      break;
+    case "ignoreVideo":
+      updateSetting("ignoreVideo", !getSettings().ignoreVideo);
       break;
     case "mediaPill":
       updateSetting("idleShowsMedia", !getSettings().idleShowsMedia);

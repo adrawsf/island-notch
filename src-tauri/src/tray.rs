@@ -21,6 +21,7 @@ const ID_AUTOSTART: &str = "autostart";
 const ID_QUIT: &str = "quit";
 const ID_SHORTCUT: &str = "shortcut";
 const ID_MEDIA_PILL: &str = "mediaPill";
+const ID_IGNORE_VIDEO: &str = "ignoreVideo";
 const ID_LYRICS_PILL: &str = "lyricsPill";
 const ID_MINI_PLAYER: &str = "miniPlayer";
 const ID_SHRINK_BROWSERS: &str = "shrinkForBrowsers";
@@ -157,6 +158,11 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .item(
             &CheckMenuItemBuilder::with_id(ID_MEDIA_PILL, "Tampilkan lagu di pill")
                 .checked(config.idle_shows_media)
+                .build(app)?,
+        )
+        .item(
+            &CheckMenuItemBuilder::with_id(ID_IGNORE_VIDEO, "Abaikan video (film di browser)")
+                .checked(config.ignore_video)
                 .build(app)?,
         )
         .item(&lyrics_menu.build()?)

@@ -9,6 +9,7 @@ import { Artwork } from "../features/media/Artwork";
 import { iconButton, MediaProgress, TransportButtons } from "../features/media/MediaControls";
 import { mediaControl } from "../features/media/mediaBridge";
 import { hideMiniPlayer } from "../features/media/miniPlayerBridge";
+import { SourceLink } from "../features/media/SourceLink";
 import { useMedia } from "../features/media/useMedia";
 import { LyricsSettings } from "../features/lyrics/LyricsControls";
 import { LyricsPair } from "../features/lyrics/LyricsPair";
@@ -36,7 +37,7 @@ export function MiniPlayer() {
   const compact = settings.miniPlayerCompact;
   // Compact mode exists to show lyrics, so it always fetches them.
   const lyrics = useLyrics(media, settings.miniPlayerLyrics || compact);
-  const synced = lyrics.status === "found" && lyrics.lyrics.synced ? lyrics.lyrics : null;
+  const synced = lyrics.status === "found" && lyrics.lyrics.synced && !media.tabOnly ? lyrics.lyrics : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const cardWidth = compact ? CARD_WIDTH.compact : CARD_WIDTH.full;
 
@@ -136,8 +137,10 @@ export function MiniPlayer() {
         ) : media.active ? (
           <>
             <div className="flex items-center gap-3 pr-14">
-              <Artwork src={media.artwork} className="h-16 w-16 shrink-0 rounded-[14px] shadow-md" iconSize={22} />
-              <div className="min-w-0">
+              <SourceLink media={media} className="shrink-0 rounded-[14px]">
+                <Artwork src={media.artwork} className="h-16 w-16 rounded-[14px] shadow-md" iconSize={22} />
+              </SourceLink>
+              <SourceLink media={media}>
                 <div className="truncate text-[14px] font-semibold leading-tight" data-tip-truncated data-tip={media.title}>
                   {media.title || "Tanpa judul"}
                 </div>
@@ -146,7 +149,7 @@ export function MiniPlayer() {
                     {media.artist}
                   </div>
                 )}
-              </div>
+              </SourceLink>
             </div>
 
             <MediaProgress media={media} />

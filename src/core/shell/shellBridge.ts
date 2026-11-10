@@ -15,6 +15,7 @@ export type ShellConfig = Pick<
   | "theme"
   | "idleWidgets"
   | "idleShowsMedia"
+  | "ignoreVideo"
   | "pillShowsLyrics"
   | "lyricsSource"
   | "shrinkForBrowsers"

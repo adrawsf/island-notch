@@ -22,6 +22,11 @@ export interface MediaState {
   canSeek: boolean;
   /** Cover art data URI. */
   artwork: string | null;
+  /**
+   * Read from a browser tab's name (Windows reports no session for it):
+   * no position, controls or artwork, so lyrics cannot be synced.
+   */
+  tabOnly: boolean;
 }
 
 export type MediaAction = "playPause" | "next" | "previous";
@@ -41,6 +46,7 @@ export const EMPTY_MEDIA: MediaState = {
   canPrevious: false,
   canSeek: false,
   artwork: null,
+  tabOnly: false,
 };
 
 const EVENT_MEDIA_STATE = "media://state";
@@ -58,6 +64,12 @@ export async function getMediaState(): Promise<MediaState> {
 export function mediaControl(action: MediaAction): void {
   if (!isTauri()) return;
   invoke("media_control", { action }).catch((err) => console.error(`[media] ${action}`, err));
+}
+
+/** Brings the app playing the media to the front (a browser comes forward as its latest window). */
+export async function openMediaSource(): Promise<boolean> {
+  if (!isTauri()) return false;
+  return invoke<boolean>("media_open_source").catch(() => false);
 }
 
 export function mediaSeek(positionMs: number): void {

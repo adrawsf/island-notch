@@ -12,6 +12,7 @@ import { iconButton, MediaProgress, TransportButtons } from "./MediaControls";
 import { toggleMiniPlayer, useMiniPlayerVisible } from "./miniPlayerBridge";
 import { useMedia } from "./useMedia";
 import { Artwork } from "./Artwork";
+import { SourceLink } from "./SourceLink";
 
 /**
  * Media tab. Cover on the left, the centre is only the lyrics (or the track
@@ -40,16 +41,22 @@ export default function MediaPanel({ requestClose }: TabPanelProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-5">
-        <Artwork src={media.artwork} className="h-[84px] w-[84px] shrink-0 rounded-[18px] shadow-lg" iconSize={28} />
+        <SourceLink media={media} onOpened={requestClose} className="shrink-0 rounded-[18px]">
+          <Artwork src={media.artwork} className="h-[84px] w-[84px] rounded-[18px] shadow-lg" iconSize={28} />
+        </SourceLink>
 
         <div className="min-w-0 flex-1">
           {mediaLyricsOpen ? (
             <div className="flex flex-col gap-1">
-              <TrackLine media={media} />
+              <SourceLink media={media} onOpened={requestClose} className="block w-full">
+                <TrackLine media={media} />
+              </SourceLink>
               <LyricsView media={media} result={lyrics} className="h-[62px]" />
             </div>
           ) : (
-            <TrackInfo media={media} />
+            <SourceLink media={media} onOpened={requestClose} className="block w-full">
+              <TrackInfo media={media} />
+            </SourceLink>
           )}
         </div>
 
@@ -122,6 +129,7 @@ function TrackInfo({ media }: { media: MediaState }) {
     <div className="min-w-0">
       <div className="truncate text-[11px] font-medium uppercase tracking-wide text-notch-muted">
         {appDisplayName(media.appId)}
+        {media.tabOnly && <span className="normal-case tracking-normal"> · dari tab, tanpa kontrol</span>}
       </div>
       <div className="truncate text-[15px] font-semibold leading-snug" data-tip-truncated data-tip={media.title}>
         {media.title || "Tanpa judul"}

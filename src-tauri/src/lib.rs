@@ -7,6 +7,7 @@ mod foreground;
 mod hit_test;
 mod lyrics;
 mod media;
+mod media_source;
 mod miniplayer;
 mod shell;
 mod shortcut;
@@ -40,6 +41,7 @@ pub fn run() {
             media::media_get_state,
             media::media_control,
             media::media_seek,
+            media_source::media_open_source,
             lyrics::lyrics_request,
             miniplayer::mini_player_toggle,
             miniplayer::mini_player_hide,

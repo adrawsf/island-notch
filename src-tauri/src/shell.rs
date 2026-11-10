@@ -24,6 +24,8 @@ pub struct ShellConfig {
     /// Every available idle widget (the registry lives in the frontend).
     pub idle_widget_options: Vec<MenuOption>,
     pub idle_shows_media: bool,
+    /// Leave films and other video out of the music views.
+    pub ignore_video: bool,
     pub pill_shows_lyrics: bool,
     pub lyrics_source: String,
     /// Every lyrics source (the registry lives in the frontend).
