@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "@tauri-apps/api/core";
 import { Minus, X } from "lucide-react";
 import { useSettings } from "../core/settings/useSettings";
-import { closeSettingsWindow, minimizeSettingsWindow } from "../core/shell/shellBridge";
+import { closeSettingsWindow, minimizeSettingsWindow, onSettingsNavigate } from "../core/shell/shellBridge";
 import { useResolvedTheme } from "../shared/useResolvedTheme";
 import { SECTIONS } from "./sections";
 
@@ -15,7 +15,8 @@ const INTERACTIVE = "button, input, select, textarea, a, [role=switch], [role=ra
 export function SettingsApp() {
   const settings = useSettings();
   const theme = useResolvedTheme(settings.theme);
-  const [sectionId, setSectionId] = useState(SECTIONS[0].id);
+  // Another window can ask for a section: "#home" on first open, an event after.
+  const [sectionId, setSectionId] = useState(() => initialSection());
   const [capturingKeys, setCapturingKeys] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const section = SECTIONS.find((s) => s.id === sectionId) ?? SECTIONS[0];
@@ -24,6 +25,14 @@ export function SettingsApp() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [sectionId]);
+
+  useEffect(
+    () =>
+      onSettingsNavigate((id) => {
+        if (SECTIONS.some((s) => s.id === id)) setSectionId(id);
+      }),
+    [],
+  );
 
   // Esc closes the window, unless the shortcut recorder is listening.
   useEffect(() => {
@@ -103,6 +112,11 @@ export function SettingsApp() {
       </div>
     </div>
   );
+}
+
+function initialSection(): string {
+  const hash = window.location.hash.slice(1);
+  return SECTIONS.some((s) => s.id === hash) ? hash : SECTIONS[0].id;
 }
 
 function WindowButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {

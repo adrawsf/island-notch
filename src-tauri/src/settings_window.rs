@@ -9,12 +9,14 @@
 //! autostart).
 
 use serde::Serialize;
-use tauri::{AppHandle, LogicalPosition, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, LogicalPosition, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::window::WEBVIEW_BROWSER_ARGS;
 
 pub const LABEL: &str = "settings";
+/// Sent to an already open window with the section id to show.
+const EVENT_NAVIGATE: &str = "settings://navigate";
 
 /// Card size plus a transparent margin on each side for the glass shadow
 /// (must match `MARGIN` in `src/settings/SettingsApp.tsx`).
@@ -25,22 +27,34 @@ fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)
 }
 
-/// Opens (or focuses) the settings window. Runs on its own thread: building a
-/// webview from the tray handler or a sync command deadlocks WebView2.
-pub fn open(app: &AppHandle) {
+/// Opens (or focuses) the settings window, optionally on one section. Runs on
+/// its own thread: building a webview from the tray handler or a sync command
+/// deadlocks WebView2.
+pub fn open(app: &AppHandle, section: Option<String>) {
     let app = app.clone();
+    // Section ids are short lowercase words; anything else is ignored.
+    let section = section.filter(|s| !s.is_empty() && s.len() <= 32 && s.chars().all(|c| c.is_ascii_lowercase()));
     std::thread::spawn(move || {
-        if let Err(err) = open_blocking(&app) {
+        if let Err(err) = open_blocking(&app, section) {
             eprintln!("[settings] {err}");
         }
     });
 }
 
-fn open_blocking(app: &AppHandle) -> tauri::Result<()> {
+fn open_blocking(app: &AppHandle, section: Option<String>) -> tauri::Result<()> {
     let w = match window(app) {
-        Some(w) => w,
+        Some(w) => {
+            if let Some(section) = &section {
+                let _ = w.emit_to(LABEL, EVENT_NAVIGATE, section);
+            }
+            w
+        }
         None => {
-            let w = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("settings.html".into()))
+            let page = match &section {
+                Some(section) => format!("settings.html#{section}"),
+                None => "settings.html".to_string(),
+            };
+            let w = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(page.into()))
                 .title("Pengaturan Island Notch")
                 .inner_size(WIDTH, HEIGHT)
                 .decorations(false)
@@ -82,8 +96,8 @@ fn center_on_notch_monitor(app: &AppHandle, w: &WebviewWindow) -> tauri::Result<
 }
 
 #[tauri::command]
-pub fn settings_open(app: AppHandle) {
-    open(&app);
+pub fn settings_open(app: AppHandle, section: Option<String>) {
+    open(&app, section);
 }
 
 #[tauri::command]

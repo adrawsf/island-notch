@@ -4,7 +4,7 @@
  * settings store.
  */
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
 
 /** A titled card of rows. */
 export function Group({ title, children }: { title?: string; children: ReactNode }) {
@@ -180,6 +180,85 @@ export function TextButton({ children, onClick, danger }: { children: ReactNode;
       type="button"
       onClick={onClick}
       className={`glass-button rounded-full px-3 py-1 text-xs font-medium ${danger ? "text-[#ff453a]" : "text-notch-fg"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+interface ReorderableTogglesProps {
+  items: { id: string; label: string; hint?: string }[];
+  /** Shown ids, in order. */
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+/**
+ * On/off list where the shown items can also be reordered. Shown items come
+ * first, in their order; hidden ones follow.
+ */
+export function ReorderableToggles({ items, value, onChange }: ReorderableTogglesProps) {
+  const move = (id: string, delta: number) => {
+    const list = [...value];
+    const from = list.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= list.length) return;
+    [list[from], list[to]] = [list[to], list[from]];
+    onChange(list);
+  };
+  const ordered = [
+    ...value.flatMap((id) => items.find((i) => i.id === id) ?? []),
+    ...items.filter((i) => !value.includes(i.id)),
+  ];
+  return (
+    <>
+      {ordered.map((item) => {
+        const index = value.indexOf(item.id);
+        const shown = index >= 0;
+        return (
+          <Row key={item.id} title={item.label} hint={item.hint}>
+            {shown && (
+              <div className="flex gap-1">
+                <IconButton label="Naikkan" disabled={index === 0} onClick={() => move(item.id, -1)}>
+                  <ArrowUp size={12} strokeWidth={2.4} />
+                </IconButton>
+                <IconButton label="Turunkan" disabled={index === value.length - 1} onClick={() => move(item.id, 1)}>
+                  <ArrowDown size={12} strokeWidth={2.4} />
+                </IconButton>
+              </div>
+            )}
+            <Toggle
+              checked={shown}
+              onChange={(on) => onChange(on ? [...value, item.id] : value.filter((v) => v !== item.id))}
+              label={`Tampilkan ${item.label}`}
+            />
+          </Row>
+        );
+      })}
+    </>
+  );
+}
+
+/** Small round glass icon button. */
+export function IconButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      data-tip={label}
+      className="glass-button flex h-6 w-6 items-center justify-center rounded-full text-notch-muted hover:text-notch-fg disabled:opacity-30"
     >
       {children}
     </button>

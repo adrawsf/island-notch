@@ -24,7 +24,7 @@ export const TABS: TabDefinition[] = [
     id: "home",
     label: "Beranda",
     icon: House,
-    width: 380,
+    width: 560,
     Panel: panel(() => import("../../features/home/HomePanel")),
   },
   {

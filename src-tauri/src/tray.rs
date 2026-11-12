@@ -48,7 +48,7 @@ pub fn refresh_menu(app: &AppHandle) {
 
 fn handle_menu(app: &AppHandle, id: &str) {
     match id {
-        ID_SETTINGS => crate::settings_window::open(app),
+        ID_SETTINGS => crate::settings_window::open(app, None),
         ID_VISIBLE => {
             if let Some(window) = main_window(app) {
                 let visible = window.is_visible().unwrap_or(true);

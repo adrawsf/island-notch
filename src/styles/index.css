@@ -217,3 +217,54 @@ body,
   background: rgb(32 32 36);
   color: rgb(255 255 255);
 }
+
+/* ---------- Pixel pet ---------- */
+
+.pet-dance {
+  transform-origin: 50% 100%;
+  animation: pet-dance 0.52s ease-in-out infinite alternate;
+}
+
+.pet-sleep {
+  transform-origin: 50% 100%;
+  animation: pet-breathe 3.2s ease-in-out infinite;
+}
+
+.pet-happy {
+  transform-origin: 50% 100%;
+  animation: pet-hop 0.5s ease-out 2;
+}
+
+@keyframes pet-dance {
+  from { transform: translateY(0) rotate(-6deg); }
+  to { transform: translateY(-8%) rotate(6deg); }
+}
+
+@keyframes pet-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.03, 0.96); }
+}
+
+@keyframes pet-hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-12%); }
+}
+
+.pet-float {
+  opacity: 0;
+  animation: pet-float 1.8s ease-out infinite;
+}
+
+.pet-float-happy { color: #ff6b8b; }
+.pet-float-dance { color: rgb(var(--notch-fg) / 0.8); }
+.pet-float-sleep { color: rgb(var(--notch-fg) / 0.6); animation-duration: 2.6s; }
+
+@keyframes pet-float {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.7); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(6px, -140%) scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-dance, .pet-sleep, .pet-happy, .pet-float { animation: none; }
+}

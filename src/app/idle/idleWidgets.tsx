@@ -9,6 +9,9 @@
 import type { ComponentType } from "react";
 import { useNow } from "../../shared/useNow";
 import { formatClock, formatShortDate } from "../../shared/format";
+import { useSettings } from "../../core/settings/useSettings";
+import { PixelCat } from "../../features/home/pet/PixelCat";
+import { usePetMood } from "../../features/home/pet/usePetMood";
 
 export interface IdleWidgetDefinition {
   /** Stable id stored in settings. */
@@ -28,9 +31,17 @@ function DateWidget() {
   return <span className="font-medium text-notch-muted">{formatShortDate(now)}</span>;
 }
 
+/** The home tab's pixel cat, peeking out of the pill (no floating effects at this size). */
+function Pet() {
+  const { petColor } = useSettings();
+  const { mood } = usePetMood();
+  return <PixelCat mood={mood} color={petColor} size={20} effects={false} />;
+}
+
 export const IDLE_WIDGETS: IdleWidgetDefinition[] = [
   { id: "clock", label: "Jam", Component: Clock },
   { id: "date", label: "Tanggal", Component: DateWidget },
+  { id: "pet", label: "Kucing piksel", Component: Pet },
 ];
 
 /** Known widgets in the user's order; unknown ids (e.g. a removed widget) are skipped. */

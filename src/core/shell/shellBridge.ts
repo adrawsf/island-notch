@@ -47,7 +47,13 @@ function call(command: string): void {
   if (isTauri()) invoke(command).catch((err) => console.error(`[shell] ${command}`, err));
 }
 
-export const openSettingsWindow = () => call("settings_open");
+/** Opens the settings window, optionally on one section (e.g. "home"). */
+export function openSettingsWindow(section?: string): void {
+  if (isTauri()) invoke("settings_open", { section: section ?? null }).catch((err) => console.error("[shell] settings_open", err));
+}
+
+/** Another window asked the open settings window to show a section. */
+export const onSettingsNavigate = (handler: (section: string) => void) => subscribe<string>("settings://navigate", handler);
 export const closeSettingsWindow = () => call("settings_close");
 export const minimizeSettingsWindow = () => call("settings_minimize");
 

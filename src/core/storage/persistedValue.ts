@@ -8,11 +8,15 @@ import { load, type Store } from "@tauri-apps/plugin-store";
 import { isTauri } from "@tauri-apps/api/core";
 
 const DATA_FILE = "data.json";
-let storePromise: Promise<Store> | null = null;
+const stores = new Map<string, Promise<Store>>();
 
-function dataStore(): Promise<Store> {
-  storePromise ??= load(DATA_FILE, { autoSave: 300, defaults: {} });
-  return storePromise;
+function dataStore(file: string): Promise<Store> {
+  let store = stores.get(file);
+  if (!store) {
+    store = load(file, { autoSave: 300, defaults: {} });
+    stores.set(file, store);
+  }
+  return store;
 }
 
 /** JSON with object keys sorted, so values round-tripped through Rust compare equal. */
@@ -39,6 +43,11 @@ export interface PersistedValueOptions<T> {
    * The result is saved, so it never runs again.
    */
   migrate?: (read: (key: string) => Promise<unknown>) => Promise<T | null>;
+  /**
+   * Store file (default `data.json`). Give large values (images) their own
+   * file, so saving small data elsewhere never rewrites them.
+   */
+  file?: string;
 }
 
 /**
@@ -57,9 +66,10 @@ export function persistedValue<T>(
   // edits; ignoring them prevents fast typing from being reverted.
   const ownWrites = new Set<string>();
   const emit = () => listeners.forEach((l) => l());
+  const file = options.file ?? DATA_FILE;
 
   if (isTauri()) {
-    dataStore()
+    dataStore(file)
       .then(async (store) => {
         const raw = await store.get(key);
         let valid = raw === undefined ? null : validate(raw);
@@ -94,7 +104,7 @@ export function persistedValue<T>(
       current = typeof next === "function" ? (next as (prev: T) => T)(current) : next;
       emit();
       if (isTauri()) {
-        dataStore()
+        dataStore(file)
           .then((store) => {
             ownWrites.add(stableJson(current));
             return store.set(key, current);

@@ -48,7 +48,7 @@ export function TabBar({ activeId, onSelect }: TabBarProps) {
       </nav>
       <button
         type="button"
-        onClick={openSettingsWindow}
+        onClick={() => openSettingsWindow()}
         data-tip="Pengaturan"
         aria-label="Pengaturan"
         className="glass-button flex shrink-0 items-center justify-center rounded-full text-notch-muted hover:text-notch-fg"

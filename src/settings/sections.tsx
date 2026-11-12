@@ -6,8 +6,7 @@ import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import {
-  ArrowDown,
-  ArrowUp,
+  House,
   Info,
   Music,
   Palette,
@@ -32,7 +31,8 @@ import { toggleMiniPlayer, useMiniPlayerVisible } from "../features/media/miniPl
 import { AMBIENCE_SOUNDS } from "../features/pomodoro/ambience/sounds";
 import { prettyShortcut } from "../shared/format";
 import { Stepper } from "../shared/ui/Stepper";
-import { Group, Row, Segmented, Select, Slider, TextButton, Toggle } from "./controls";
+import { Group, ReorderableToggles, Row, Segmented, Select, Slider, TextButton, Toggle } from "./controls";
+import { HomeSection } from "./HomeSection";
 import { ShortcutRecorder } from "./ShortcutRecorder";
 
 export interface SectionProps {
@@ -173,22 +173,6 @@ function GeneralSection({ setCapturingKeys }: SectionProps) {
 function AppearanceSection() {
   const s = useSettings();
 
-  const toggleWidget = (id: string, on: boolean) =>
-    set("idleWidgets", on ? [...s.idleWidgets, id] : s.idleWidgets.filter((w) => w !== id));
-  const moveWidget = (id: string, delta: number) => {
-    const list = [...s.idleWidgets];
-    const from = list.indexOf(id);
-    const to = from + delta;
-    if (from < 0 || to < 0 || to >= list.length) return;
-    [list[from], list[to]] = [list[to], list[from]];
-    set("idleWidgets", list);
-  };
-  // Shown widgets first, in pill order; the rest after.
-  const widgets = [
-    ...s.idleWidgets.flatMap((id) => IDLE_WIDGETS.find((w) => w.id === id) ?? []),
-    ...IDLE_WIDGETS.filter((w) => !s.idleWidgets.includes(w.id)),
-  ];
-
   return (
     <>
       <Group title="Notch">
@@ -236,45 +220,12 @@ function AppearanceSection() {
       </Group>
 
       <Group title="Widget idle · urutan kiri ke kanan">
-        {widgets.map((w) => {
-          const index = s.idleWidgets.indexOf(w.id);
-          const shown = index >= 0;
-          return (
-            <Row key={w.id} title={w.label}>
-              {shown && (
-                <div className="flex gap-1">
-                  <OrderButton label="Naikkan" disabled={index === 0} onClick={() => moveWidget(w.id, -1)} up />
-                  <OrderButton
-                    label="Turunkan"
-                    disabled={index === s.idleWidgets.length - 1}
-                    onClick={() => moveWidget(w.id, 1)}
-                  />
-                </div>
-              )}
-              <Toggle checked={shown} onChange={(on) => toggleWidget(w.id, on)} label={`Tampilkan ${w.label}`} />
-            </Row>
-          );
-        })}
+        <ReorderableToggles items={IDLE_WIDGETS} value={s.idleWidgets} onChange={(v) => set("idleWidgets", v)} />
       </Group>
     </>
   );
 }
 
-function OrderButton({ label, disabled, onClick, up }: { label: string; disabled: boolean; onClick: () => void; up?: boolean }) {
-  const Icon = up ? ArrowUp : ArrowDown;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      data-tip={label}
-      className="glass-button flex h-6 w-6 items-center justify-center rounded-full text-notch-muted hover:text-notch-fg disabled:opacity-30"
-    >
-      <Icon size={12} strokeWidth={2.4} />
-    </button>
-  );
-}
 
 // ---------- Media ----------
 
@@ -474,6 +425,7 @@ function AboutSection() {
 export const SECTIONS: SectionDefinition[] = [
   { id: "general", label: "Umum", icon: SlidersHorizontal, Component: GeneralSection },
   { id: "appearance", label: "Tampilan", icon: Palette, Component: AppearanceSection },
+  { id: "home", label: "Beranda", icon: House, Component: HomeSection },
   { id: "media", label: "Media & Lirik", icon: Music, Component: MediaSection },
   { id: "pomodoro", label: "Pomodoro", icon: Timer, Component: PomodoroSection },
   { id: "teleprompter", label: "Teleprompter", icon: ScrollText, Component: TeleprompterSection },

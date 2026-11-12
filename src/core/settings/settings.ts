@@ -12,6 +12,8 @@ import { isTauri } from "@tauri-apps/api/core";
 export type NotchShape = "notch" | "island";
 export type NotchSize = "compact" | "default" | "large";
 export type ThemeMode = "dark" | "light" | "auto";
+export type ClockSize = "small" | "medium" | "large";
+export type PetColor = "orange" | "gray" | "black" | "cream";
 
 export interface AppSettings {
   /** Hovering the collapsed notch expands it. */
@@ -65,6 +67,22 @@ export interface AppSettings {
   teleprompterCountdown: number;
   /** Keep the teleprompter out of screenshots, recordings and screen sharing. */
   teleprompterHideFromCapture: boolean;
+  /** Home tab cards shown, in order (see src/features/home/homeCards.ts). */
+  homeCards: string[];
+  /** Size of the big clock on the home tab. */
+  clockSize: ClockSize;
+  /** IANA time zones shown as world clocks, in order (max 4). */
+  worldClocks: string[];
+  /** How the home image fills its card. */
+  homeImageFit: "cover" | "contain";
+  /** Fur color of the pixel cat. */
+  petColor: PetColor;
+  /** A soft chime on the hour. */
+  hourlyChime: boolean;
+  /** The chime stays silent between these hours (start inclusive, end exclusive; may wrap midnight). */
+  chimeQuietHours: boolean;
+  chimeQuietStart: number;
+  chimeQuietEnd: number;
   /** The first-run hint toast has been shown. */
   welcomeShown: boolean;
 }
@@ -83,6 +101,13 @@ const isIdList: Validator<string[]> = (v): v is string[] =>
   Array.isArray(v) &&
   v.length <= 8 &&
   v.every((x) => typeof x === "string" && x.length > 0 && x.length <= 40) &&
+  new Set(v).size === v.length;
+const isHour: Validator<number> = (v): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 23;
+/** Up to 4 distinct IANA zone names (unknown zones are skipped when rendering). */
+const isZoneList: Validator<string[]> = (v): v is string[] =>
+  Array.isArray(v) &&
+  v.length <= 4 &&
+  v.every((x) => typeof x === "string" && /^[A-Za-z0-9_+\-/]{1,64}$/.test(x)) &&
   new Set(v).size === v.length;
 const inRange =
   (min: number, max: number): Validator<number> =>
@@ -122,6 +147,15 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   teleprompterSpeed: { default: 40, valid: inRange(10, 200) },
   teleprompterCountdown: { default: 3, valid: inRange(0, 10) },
   teleprompterHideFromCapture: { default: true, valid: isBoolean },
+  homeCards: { default: ["clock", "worldClocks", "image", "pet"], valid: isIdList },
+  clockSize: { default: "medium", valid: oneOf("small", "medium", "large") },
+  worldClocks: { default: [], valid: isZoneList },
+  homeImageFit: { default: "cover", valid: oneOf("cover", "contain") },
+  petColor: { default: "orange", valid: oneOf("orange", "gray", "black", "cream") },
+  hourlyChime: { default: false, valid: isBoolean },
+  chimeQuietHours: { default: true, valid: isBoolean },
+  chimeQuietStart: { default: 22, valid: isHour },
+  chimeQuietEnd: { default: 7, valid: isHour },
   welcomeShown: { default: false, valid: isBoolean },
 };
 
