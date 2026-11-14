@@ -43,6 +43,8 @@ export interface AppSettings {
   miniPlayerCompact: boolean;
   /** Where lyrics come from: "auto" or one provider id (see src/features/lyrics/sources.ts). */
   lyricsSource: "auto" | "lrclib" | "netease" | "kugou" | "qqmusic" | "genius";
+  /** Japanese, Korean and Chinese lyrics get a romanization under each line. */
+  lyricsRomanize: boolean;
   /** The Media tab shows lyrics instead of track details. */
   mediaLyricsOpen: boolean;
   /** Shrink the notch to a thin handle while a browser's tab strip is under it. */
@@ -133,6 +135,7 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   ignoreVideo: { default: true, valid: isBoolean },
   pillShowsLyrics: { default: true, valid: isBoolean },
   mediaLyricsOpen: { default: false, valid: isBoolean },
+  lyricsRomanize: { default: true, valid: isBoolean },
   lyricsSource: { default: "auto", valid: oneOf("auto", "lrclib", "netease", "kugou", "qqmusic", "genius") },
   miniPlayerLyrics: { default: true, valid: isBoolean },
   miniPlayerCompact: { default: false, valid: isBoolean },

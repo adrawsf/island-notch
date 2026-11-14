@@ -266,6 +266,12 @@ function MediaSection() {
             label="Sumber lirik"
           />
         </Row>
+        <Row
+          title="Romanisasi"
+          hint="Lirik Jepang, Korea, dan Mandarin diberi tulisan latin di bawahnya (di pill: latinnya saja). Lagu Jepang pertama butuh ~1 detik untuk memuat kamus."
+        >
+          <Toggle checked={s.lyricsRomanize} onChange={(v) => set("lyricsRomanize", v)} label="Romanisasi lirik" />
+        </Row>
       </Group>
 
       <Group title="Mini player">

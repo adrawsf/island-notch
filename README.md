@@ -57,6 +57,7 @@ src-tauri/src/
 - **Window baru:** wajib memakai `WEBVIEW_BROWSER_ARGS` dari `window.rs`. Args yang berbeda membuat WebView2 gagal dengan error `0x8007139F`. Buat window di thread terpisah (lihat `miniplayer.rs`), jangan dari thread utama atau command sync, karena WebView2 bisa deadlock. Tiap window punya file HTML sendiri yang didaftarkan di `vite.config.ts` dan label-nya ditambahkan di `capabilities/default.json`.
 - **Pengaturan:** sumber kebenarannya `settings.ts`. Window pengaturan (`src/settings/`) mengubah store; window notch menangkap perubahannya dan mengirim bagian yang dibutuhkan Rust (monitor, shortcut, filter video) lewat `apply_shell_config`. Setting baru yang perlu diatur user: tambahkan kontrolnya di `src/settings/sections.tsx`.
 - **Data fitur** (catatan, naskah, dll.) bukan setting: pakai `persistedValue(key, fallback, validate)` dari `src/core/storage/`. Data yang rusak di disk jatuh ke fallback, dan perubahannya tersinkron antar-window. Data besar (gambar) pakai opsi `file` supaya punya file store sendiri.
+- **Romanisasi lirik** ada di `src/features/lyrics/romanize/`: Korea ditulis sendiri, Mandarin pakai pinyin-pro, Jepang pakai kuroshiro + kamus kuromoji. Kamus disajikan dari `node_modules` lewat plugin `kuromojiDict` di `vite.config.ts` (tidak disalin ke repo), dan kuromoji butuh shim `zlibShim.ts` + `pathShim.ts` (alias di config yang sama).
 - **Sumber lirik baru:** buat provider di `src/features/lyrics/providers/`, daftarkan di `sources.ts`, dan tambahkan endpoint-nya di allowlist `lyrics.rs`. Frontend hanya menyebut nama endpoint, tidak pernah URL.
 - **Notifikasi:** fitur apa pun cukup memanggil `showToast({ title, body })` dari `src/core/toast/toastQueue.ts`.
 - **Rahasia** seperti file OAuth client dan `.env` tidak boleh di-commit. Polanya sudah ada di `.gitignore`.
@@ -65,7 +66,7 @@ src-tauri/src/
 
 1. **Kerangka** ✅: project, shell notch, registry tab, setting, click-through.
 2. **Shell lanjutan** ✅: pilih monitor, ukuran dan bentuk (notch/island), tema, widget idle, notifikasi notch (antrean toast), tray, autostart, shortcut global (default `Ctrl+Alt+N`, bisa direkam ulang).
-3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu) ✅, mini player ✅.
+3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu; romanisasi Jepang/Korea/Mandarin) ✅, mini player ✅.
 4. **Beranda kustom** ✅: kartu jam (ukuran + bunyi tiap jam dengan jam tenang), world clock, gambar/GIF, kucing piksel (juga bisa jadi widget idle). **Produktivitas:** Catatan (teks + checklist, gaya Keep) ✅, Pomodoro + ambience sintesis (hujan, ombak, api, angin, noise) ✅, Teleprompter ✅, Kalender Google.
 5. **Sistem:** Clipboard dan OCR, volume mixer, monitor sistem, Drop Shelf, pusat notifikasi.
 6. **Window pengaturan** ✅ (glass, sidebar kategori, dibuka dari tombol ⚙ di notch atau tray), updater, dan rilis.

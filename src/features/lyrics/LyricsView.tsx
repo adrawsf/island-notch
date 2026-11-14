@@ -3,6 +3,8 @@ import { mediaSeek, type MediaState } from "../media/mediaBridge";
 import { useLyricPosition } from "./useLyrics";
 import { currentLineIndex } from "./lyricsText";
 import type { LyricsResult } from "./useLyrics";
+import { useRomanized } from "./romanize";
+import type { Lyrics } from "./types";
 
 interface LyricsViewProps {
   media: MediaState;
@@ -27,23 +29,29 @@ export function LyricsView({ media, result, className = "" }: LyricsViewProps) {
   }
   // Without a playback position (tab-only media) timing is unknown: show text.
   return lyrics.synced && !media.tabOnly ? (
-    <SyncedLyrics media={media} lines={lyrics.lines} className={className} />
+    <SyncedLyrics media={media} lyrics={lyrics} className={className} />
   ) : (
-    <div className={`overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-notch-muted ${className}`}>
-      {lyrics.lines.map((l) => l.text).join("\n")}
+    <PlainLyrics lyrics={lyrics} className={className} />
+  );
+}
+
+function PlainLyrics({ lyrics, className }: { lyrics: Lyrics; className: string }) {
+  const romanized = useRomanized(lyrics);
+  return (
+    <div className={`overflow-y-auto text-sm leading-relaxed text-notch-muted ${className}`}>
+      {lyrics.lines.map((l, i) => (
+        <div key={i} className="min-h-[1lh]">
+          {l.text}
+          {romanized?.[i] && <div className="text-xs leading-snug text-notch-fg/40">{romanized[i]}</div>}
+        </div>
+      ))}
     </div>
   );
 }
 
-function SyncedLyrics({
-  media,
-  lines,
-  className,
-}: {
-  media: MediaState;
-  lines: { timeMs: number; text: string }[];
-  className: string;
-}) {
+function SyncedLyrics({ media, lyrics, className }: { media: MediaState; lyrics: Lyrics; className: string }) {
+  const { lines } = lyrics;
+  const romanized = useRomanized(lyrics);
   const position = useLyricPosition(media);
   const current = currentLineIndex(lines, position);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,6 +86,9 @@ function SyncedLyrics({
             }`}
           >
             {line.text || "♪"}
+            {romanized?.[i] && (
+              <span className="block text-[12px] font-medium leading-snug opacity-75">{romanized[i]}</span>
+            )}
           </button>
         ))}
       </div>

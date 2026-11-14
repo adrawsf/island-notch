@@ -3,6 +3,7 @@ import type { MediaState } from "../media/mediaBridge";
 import type { Lyrics } from "./types";
 import { useLyricPosition } from "./useLyrics";
 import { currentLineIndex } from "./lyricsText";
+import { useRomanized } from "./romanize";
 
 /**
  * The line being sung and the next one. Long lines wrap instead of being cut
@@ -11,9 +12,13 @@ import { currentLineIndex } from "./lyricsText";
  */
 export function LyricsPair({ media, lyrics }: { media: MediaState; lyrics: Lyrics }) {
   const position = useLyricPosition(media);
+  const romanized = useRomanized(lyrics);
   const index = currentLineIndex(lyrics.lines, position);
   const current = index >= 0 ? lyrics.lines[index].text : "";
-  const next = lyrics.lines.slice(index + 1).find((l) => l.text)?.text ?? "";
+  const currentRoma = index >= 0 ? romanized?.[index] : null;
+  const nextIndex = lyrics.lines.findIndex((l, i) => i > index && l.text);
+  const next = nextIndex >= 0 ? lyrics.lines[nextIndex].text : "";
+  const nextRoma = nextIndex >= 0 ? romanized?.[nextIndex] : null;
 
   return (
     <div className="min-h-[40px]" aria-live="polite">
@@ -28,7 +33,9 @@ export function LyricsPair({ media, lyrics }: { media: MediaState; lyrics: Lyric
           transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <div className="break-words text-[14px] font-semibold leading-5">{current || "♪"}</div>
+          {currentRoma && <div className="break-words text-[12px] leading-4 text-notch-fg/70">{currentRoma}</div>}
           {next && <div className="mt-0.5 break-words text-[12px] leading-[18px] text-notch-muted">{next}</div>}
+          {nextRoma && <div className="break-words text-[11px] leading-4 text-notch-fg/45">{nextRoma}</div>}
         </motion.div>
       </AnimatePresence>
     </div>
