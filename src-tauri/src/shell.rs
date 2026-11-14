@@ -3,8 +3,8 @@
 //! The frontend settings store (`src/core/settings/settings.ts`) is the single
 //! source of truth. Whenever a shell-related setting changes, the notch window
 //! calls `apply_shell_config` and this module applies the parts Rust owns:
-//! monitor placement and the global shortcut. Media reads `ignore_video` from
-//! the stored config.
+//! monitor placement and the global shortcut. Media reads `ignore_video` and
+//! the foreground watcher reads `hide_in_fullscreen` from the stored config.
 
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
@@ -23,6 +23,8 @@ pub struct ShellConfig {
     pub ignore_video: bool,
     pub shortcut_enabled: bool,
     pub toggle_shortcut: String,
+    /// Hide the notch while a full screen app (game, video) is on its monitor.
+    pub hide_in_fullscreen: bool,
 }
 
 #[derive(Default)]

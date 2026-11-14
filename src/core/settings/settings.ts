@@ -47,6 +47,8 @@ export interface AppSettings {
   mediaLyricsOpen: boolean;
   /** Shrink the notch to a thin handle while a browser's tab strip is under it. */
   shrinkForBrowsers: boolean;
+  /** Hide the notch entirely while a full screen app (game, video) is on its monitor. */
+  hideInFullscreen: boolean;
   /** Global shortcut that opens/closes the notch. */
   shortcutEnabled: boolean;
   /** Shortcut in the global-shortcut plugin format, e.g. "Control+Alt+N". */
@@ -135,6 +137,7 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   miniPlayerLyrics: { default: true, valid: isBoolean },
   miniPlayerCompact: { default: false, valid: isBoolean },
   shrinkForBrowsers: { default: true, valid: isBoolean },
+  hideInFullscreen: { default: true, valid: isBoolean },
   shortcutEnabled: { default: true, valid: isBoolean },
   toggleShortcut: { default: "Control+Alt+N", valid: isNonEmptyString },
   pomodoroAutoAdvance: { default: true, valid: isBoolean },

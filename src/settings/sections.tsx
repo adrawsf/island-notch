@@ -217,6 +217,12 @@ function AppearanceSection() {
         >
           <Toggle checked={s.shrinkForBrowsers} onChange={(v) => set("shrinkForBrowsers", v)} label="Kecilkan saat browser" />
         </Row>
+        <Row
+          title="Sembunyikan saat layar penuh"
+          hint="Notch hilang total waktu main game atau nonton video layar penuh, lalu muncul lagi setelahnya. Shortcut tetap bisa memunculkannya."
+        >
+          <Toggle checked={s.hideInFullscreen} onChange={(v) => set("hideInFullscreen", v)} label="Sembunyikan saat layar penuh" />
+        </Row>
       </Group>
 
       <Group title="Widget idle · urutan kiri ke kanan">

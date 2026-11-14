@@ -20,6 +20,7 @@ export function useShellSync() {
       ignoreVideo: s.ignoreVideo,
       shortcutEnabled: s.shortcutEnabled,
       toggleShortcut: s.toggleShortcut,
+      hideInFullscreen: s.hideInFullscreen,
     }).then((result) => {
       const error = result?.shortcutError ?? null;
       // Rust keeps reporting a failed shortcut; toast only when it changes.
@@ -28,7 +29,7 @@ export function useShellSync() {
       }
       lastError.current = error;
     });
-  }, [s.monitor, s.ignoreVideo, s.shortcutEnabled, s.toggleShortcut]);
+  }, [s.monitor, s.ignoreVideo, s.shortcutEnabled, s.toggleShortcut, s.hideInFullscreen]);
 
   // First run: tell the user where things are.
   useEffect(() => {

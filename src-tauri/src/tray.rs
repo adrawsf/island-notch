@@ -52,6 +52,9 @@ fn handle_menu(app: &AppHandle, id: &str) {
         ID_VISIBLE => {
             if let Some(window) = main_window(app) {
                 let visible = window.is_visible().unwrap_or(true);
+                if !visible {
+                    crate::foreground::user_shown();
+                }
                 let _ = if visible { window.hide() } else { window.show() };
             }
         }

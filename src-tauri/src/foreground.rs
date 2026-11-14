@@ -1,13 +1,36 @@
-//! Watches the foreground window so the notch can get out of the way of a
-//! browser's tab strip.
+//! Watches the foreground window so the notch can get out of the way.
 //!
-//! Emits `notch://compact` (bool) when it changes: true while a browser is the
-//! active window, sits on the notch's monitor and touches the top edge under
-//! the notch (maximized, snapped to the top or full screen).
+//! - Browser under the notch: emits `notch://compact` (bool) when it changes,
+//!   true while a browser is the active window, sits on the notch's monitor
+//!   and touches the top edge under the notch (maximized, snapped or full
+//!   screen). The frontend shrinks the notch to a thin handle.
+//! - Full screen app (a game, a video played full screen) on the notch's
+//!   monitor: the notch window is hidden outright, and shown again (without
+//!   taking focus) when the app leaves full screen. Opening the notch with the
+//!   shortcut or the tray during full screen keeps it shown until then.
 
-use tauri::{AppHandle, Emitter};
+use std::sync::atomic::{AtomicU8, Ordering};
+use tauri::{AppHandle, Emitter, Manager};
 
 pub const EVENT_COMPACT: &str = "notch://compact";
+
+/// Nothing hidden for full screen.
+const FS_NONE: u8 = 0;
+/// Hidden by this module; shown again when full screen ends.
+const FS_HIDDEN: u8 = 1;
+/// The user brought it back during full screen; leave it alone until it ends.
+const FS_USER: u8 = 2;
+static FULLSCREEN_STATE: AtomicU8 = AtomicU8::new(FS_NONE);
+
+/// The user asked for the notch (shortcut, tray) while it was hidden for a
+/// full screen app: keep it shown for the rest of that full screen session.
+pub fn user_shown() {
+    let _ = FULLSCREEN_STATE.compare_exchange(FS_HIDDEN, FS_USER, Ordering::SeqCst, Ordering::SeqCst);
+}
+
+fn hide_in_fullscreen_enabled(app: &AppHandle) -> bool {
+    app.state::<crate::shell::ShellState>().current().map(|c| c.hide_in_fullscreen).unwrap_or(true)
+}
 
 /// Executables treated as browsers (lowercase file names).
 const BROWSERS: &[&str] = &[
@@ -40,13 +63,33 @@ pub fn start(app: AppHandle) {
             let Some(notch) = crate::window::main_window(&app) else { continue };
             // `None`: our own window is in front (the user is using the notch,
             // mini player or teleprompter); keep the current state.
-            let Some(compact) = win::browser_under_notch(&notch, own_pid) else { continue };
-            if compact != last {
-                last = compact;
-                let _ = app.emit_to(crate::window::MAIN_WINDOW_LABEL, EVENT_COMPACT, compact);
+            let Some(front) = win::inspect(&notch, own_pid) else { continue };
+            if front.browser_under_notch != last {
+                last = front.browser_under_notch;
+                let _ = app.emit_to(crate::window::MAIN_WINDOW_LABEL, EVENT_COMPACT, last);
             }
+            update_fullscreen(&app, &notch, front.fullscreen && hide_in_fullscreen_enabled(&app));
         }
     });
+}
+
+#[cfg(windows)]
+fn update_fullscreen(app: &AppHandle, notch: &tauri::WebviewWindow, fullscreen: bool) {
+    let state = FULLSCREEN_STATE.load(Ordering::SeqCst);
+    if fullscreen {
+        // A notch the user hid from the tray stays as it is (FS_NONE, not visible).
+        if state == FS_NONE && notch.is_visible().unwrap_or(false) {
+            win::set_shown(notch, false);
+            FULLSCREEN_STATE.store(FS_HIDDEN, Ordering::SeqCst);
+            crate::tray::refresh_menu(app);
+        }
+    } else if state != FS_NONE {
+        FULLSCREEN_STATE.store(FS_NONE, Ordering::SeqCst);
+        if state == FS_HIDDEN {
+            win::set_shown(notch, true);
+            crate::tray::refresh_menu(app);
+        }
+    }
 }
 
 #[cfg(not(windows))]
@@ -60,49 +103,92 @@ mod win {
     use windows::Win32::System::Threading::{
         OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
     };
-    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, IsIconic};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetClassNameW, GetForegroundWindow, GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsIconic, IsZoomed,
+        ShowWindow, GWL_STYLE, SW_HIDE, SW_SHOWNOACTIVATE, WS_CAPTION,
+    };
 
-    /// Some(true) when a browser should make the notch compact, Some(false)
-    /// when not, None when one of our own windows is in front.
-    pub fn browser_under_notch(notch: &tauri::WebviewWindow, own_pid: u32) -> Option<bool> {
+    #[derive(Default)]
+    pub struct Foreground {
+        /// A browser touches the top edge under the notch.
+        pub browser_under_notch: bool,
+        /// An app covers the whole monitor the notch is on (game, full screen video).
+        pub fullscreen: bool,
+    }
+
+    /// What the foreground window means for the notch; None when one of our
+    /// own windows is in front.
+    pub fn inspect(notch: &tauri::WebviewWindow, own_pid: u32) -> Option<Foreground> {
         unsafe {
             let fg = GetForegroundWindow();
             if fg.0.is_null() {
-                return Some(false);
+                return Some(Foreground::default());
             }
             let mut pid = 0u32;
             GetWindowThreadProcessId(fg, Some(&mut pid));
             if pid == own_pid {
                 return None;
             }
-            if IsIconic(fg).as_bool() || !is_browser(pid) {
-                return Some(false);
+            if IsIconic(fg).as_bool() || is_desktop(fg) {
+                return Some(Foreground::default());
             }
-            let Ok(raw) = notch.hwnd() else { return Some(false) };
+            let Ok(raw) = notch.hwnd() else { return Some(Foreground::default()) };
             let notch_hwnd = HWND(raw.0);
 
             // Same monitor as the notch.
             let monitor = MonitorFromWindow(notch_hwnd, MONITOR_DEFAULTTONEAREST);
             if MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST) != monitor {
-                return Some(false);
+                return Some(Foreground::default());
             }
             let mut info = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
             if !GetMonitorInfoW(monitor, &mut info).as_bool() {
-                return Some(false);
+                return Some(Foreground::default());
             }
-
-            // Touches the top edge (maximized windows extend a few px past it)
-            // and spans the notch's horizontal centre.
             let mut fg_rect = RECT::default();
             let mut notch_rect = RECT::default();
             if GetWindowRect(fg, &mut fg_rect).is_err() || GetWindowRect(notch_hwnd, &mut notch_rect).is_err() {
-                return Some(false);
+                return Some(Foreground::default());
             }
-            let top_edge = info.rcMonitor.top;
+            let screen = info.rcMonitor;
+
+            // Full screen: covers the whole monitor, taskbar included. A
+            // maximized window with an auto-hidden taskbar covers it too, so
+            // it must also be borderless or not maximized.
+            let covers = fg_rect.left <= screen.left
+                && fg_rect.top <= screen.top
+                && fg_rect.right >= screen.right
+                && fg_rect.bottom >= screen.bottom;
+            let captioned = (GetWindowLongW(fg, GWL_STYLE) as u32 & WS_CAPTION.0) == WS_CAPTION.0;
+            let fullscreen = covers && (!captioned || !IsZoomed(fg).as_bool());
+
+            // Browser: touches the top edge (maximized windows extend a few px
+            // past it) and spans the notch's horizontal centre.
             let centre_x = (notch_rect.left + notch_rect.right) / 2;
-            let touches_top = fg_rect.top <= top_edge + 4;
+            let touches_top = fg_rect.top <= screen.top + 4;
             let under_notch = fg_rect.left <= centre_x && fg_rect.right >= centre_x;
-            Some(touches_top && under_notch)
+            let browser_under_notch = touches_top && under_notch && is_browser(pid);
+
+            Some(Foreground { browser_under_notch, fullscreen })
+        }
+    }
+
+    /// The desktop and taskbar can cover the monitor but are not full screen apps.
+    fn is_desktop(hwnd: HWND) -> bool {
+        let mut buf = [0u16; 64];
+        let len = unsafe { GetClassNameW(hwnd, &mut buf) };
+        if len <= 0 {
+            return false;
+        }
+        let class = String::from_utf16_lossy(&buf[..len as usize]);
+        matches!(class.as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd")
+    }
+
+    /// Hides or shows the notch window; showing never takes focus from the
+    /// app the user is in.
+    pub fn set_shown(notch: &tauri::WebviewWindow, shown: bool) {
+        let Ok(raw) = notch.hwnd() else { return };
+        unsafe {
+            let _ = ShowWindow(HWND(raw.0), if shown { SW_SHOWNOACTIVATE } else { SW_HIDE });
         }
     }
 
@@ -135,7 +221,7 @@ pub fn notch_compact_state(app: AppHandle) -> bool {
     #[cfg(windows)]
     {
         if let Some(notch) = crate::window::main_window(&app) {
-            return win::browser_under_notch(&notch, std::process::id()).unwrap_or(false);
+            return win::inspect(&notch, std::process::id()).map(|f| f.browser_under_notch).unwrap_or(false);
         }
     }
     let _ = app;

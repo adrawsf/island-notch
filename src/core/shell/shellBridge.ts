@@ -6,8 +6,11 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { AppSettings } from "../settings/settings";
 import { subscribe } from "../tauriEvents";
 
-/** Settings Rust needs: placement, the global shortcut, and the video filter. */
-export type ShellConfig = Pick<AppSettings, "monitor" | "ignoreVideo" | "shortcutEnabled" | "toggleShortcut">;
+/** Settings Rust needs: placement, the global shortcut, the video filter, full screen hiding. */
+export type ShellConfig = Pick<
+  AppSettings,
+  "monitor" | "ignoreVideo" | "shortcutEnabled" | "toggleShortcut" | "hideInFullscreen"
+>;
 
 export interface ApplyResult {
   shortcutError: string | null;

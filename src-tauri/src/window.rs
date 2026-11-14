@@ -88,6 +88,7 @@ fn center_top(window: &WebviewWindow, monitor: &Monitor) -> tauri::Result<()> {
 pub fn toggle_notch(app: &AppHandle) {
     let Some(window) = main_window(app) else { return };
     if !window.is_visible().unwrap_or(true) {
+        crate::foreground::user_shown();
         let _ = window.show();
         crate::tray::refresh_menu(app);
     }
