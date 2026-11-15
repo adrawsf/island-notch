@@ -11,11 +11,11 @@ pub const LABEL: &str = "miniplayer";
 /// Emitted to all windows with the new visibility (bool).
 pub const EVENT_VISIBILITY: &str = "miniplayer://visibility";
 
-/// Card size plus an 8px transparent margin on each side for the glass shadow.
-const WIDTH: f64 = 376.0;
-const HEIGHT: f64 = 136.0;
-/// Gap to the work-area edge, in logical px (the card itself sits 8px further in).
-const MARGIN: f64 = 8.0;
+/// First size before the card reports its own (`mini_player_fit`); the window is the card.
+const WIDTH: f64 = 360.0;
+const HEIGHT: f64 = 120.0;
+/// Gap between the card and the work-area edge, in logical px.
+const MARGIN: f64 = 16.0;
 
 pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)
@@ -128,7 +128,7 @@ pub fn mini_player_hide(app: AppHandle) {
 pub fn mini_player_fit(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
     let Some(w) = window(&app) else { return Ok(()) };
     let width = width.clamp(160.0, 600.0);
-    let height = height.clamp(56.0, 720.0);
+    let height = height.clamp(40.0, 720.0);
     let scale = w.scale_factor().map_err(|e| e.to_string())?;
     let pos = w.outer_position().map_err(|e| e.to_string())?;
     let size = w.outer_size().map_err(|e| e.to_string())?;

@@ -18,8 +18,6 @@ import { useLyrics } from "../features/lyrics/useLyrics";
 
 /** Elements that handle their own pointer input instead of dragging the window. */
 const INTERACTIVE = "button, [role='slider']";
-/** Transparent margin around the card so the glass shadow is not clipped (px, each side). */
-const MARGIN = 8;
 /** Card width per layout (CSS px); the window is sized to the card. */
 const CARD_WIDTH = { full: 400, compact: 300 } as const;
 
@@ -48,8 +46,8 @@ export function MiniPlayer() {
     if (!card || !isTauri()) return;
     let last = "";
     const fit = () => {
-      const width = Math.ceil(card.offsetWidth + MARGIN * 2);
-      const height = Math.ceil(card.offsetHeight + MARGIN * 2);
+      const width = Math.ceil(card.offsetWidth);
+      const height = Math.ceil(card.offsetHeight);
       const key = `${width}x${height}`;
       if (key === last) return;
       last = key;
@@ -69,13 +67,13 @@ export function MiniPlayer() {
   };
 
   return (
-    <div style={{ padding: MARGIN, width: "max-content" }}>
+    <div style={{ width: "max-content" }}>
       <div
         ref={cardRef}
         data-theme={theme}
         onPointerDown={onPointerDown}
         style={{ width: cardWidth }}
-        className={`glass group relative flex flex-col overflow-hidden text-notch-fg ${
+        className={`glass glass-window group relative flex flex-col overflow-hidden text-notch-fg ${
           compact ? "rounded-[22px] p-2" : "gap-2.5 rounded-[26px] p-3"
         }`}
       >

@@ -165,10 +165,10 @@ export function TeleprompterReader() {
   const lineTop = Math.round(viewport * READING_LINE);
 
   return (
-    <div className="h-full w-full p-2">
+    <div className="h-full w-full">
       <div
         data-theme={theme}
-        className="glass relative flex h-full w-full flex-col overflow-hidden rounded-[24px] text-notch-fg"
+        className="glass glass-window relative flex h-full w-full flex-col overflow-hidden rounded-[24px] text-notch-fg"
       >
         {/* Toolbar: drag handle and controls. */}
         <div onPointerDown={onDragStart} className="flex shrink-0 items-center gap-1.5 px-3 pb-1 pt-2.5">

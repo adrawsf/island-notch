@@ -18,10 +18,9 @@ pub const LABEL: &str = "settings";
 /// Sent to an already open window with the section id to show.
 const EVENT_NAVIGATE: &str = "settings://navigate";
 
-/// Card size plus a transparent margin on each side for the glass shadow
-/// (must match `MARGIN` in `src/settings/SettingsApp.tsx`).
-const WIDTH: f64 = 760.0;
-const HEIGHT: f64 = 560.0;
+/// Window size = the glass card (no transparent margin around it).
+const WIDTH: f64 = 728.0;
+const HEIGHT: f64 = 528.0;
 
 fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)

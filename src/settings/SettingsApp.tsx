@@ -7,8 +7,6 @@ import { closeSettingsWindow, minimizeSettingsWindow, onSettingsNavigate } from 
 import { useResolvedTheme } from "../shared/useResolvedTheme";
 import { SECTIONS } from "./sections";
 
-/** Transparent margin around the card for the glass shadow (see WIDTH/HEIGHT in settings_window.rs). */
-const MARGIN = 16;
 const INTERACTIVE = "button, input, select, textarea, a, [role=switch], [role=radio]";
 
 /** The settings window: sidebar of sections on the left, the section on the right. */
@@ -55,10 +53,10 @@ export function SettingsApp() {
   const { Component } = section;
 
   return (
-    <div className="h-full w-full" style={{ padding: MARGIN }}>
+    <div className="h-full w-full">
       <div
         data-theme={theme}
-        className="glass relative flex h-full w-full overflow-hidden rounded-[28px] font-sans text-notch-fg"
+        className="glass glass-window relative flex h-full w-full overflow-hidden rounded-[28px] font-sans text-notch-fg"
         style={{ colorScheme: theme }}
       >
         {/* Sidebar */}
