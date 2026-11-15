@@ -65,6 +65,7 @@ export function NotchShell() {
         : "widget";
   const notch = useNotchController({
     suppressHoverOpen: toast !== null,
+    mediaPill: idle === "media",
   });
   const theme = useResolvedTheme(settings.theme);
 
@@ -190,7 +191,12 @@ export function NotchShell() {
                 <Measure id={sizeKey} onSize={onSize}>
                   {idle === "pomodoro" && <PomodoroPill pomo={pomo} onClick={notch.open} />}
                   {idle === "media" && (
-                    <MediaPill media={media} showLyrics={settings.pillShowsLyrics && !peekTrack} onClick={notch.open} />
+                    <MediaPill
+                      media={media}
+                      showLyrics={settings.pillShowsLyrics && !peekTrack}
+                      onClick={notch.open}
+                      onWheelVolume={notch.holdCollapsed}
+                    />
                   )}
                   {idle === "widget" && <CollapsedPill widgets={settings.idleWidgets} onClick={notch.open} />}
                   {idle === "handle" && <div className="h-1.5 w-10" aria-label="Notch (diperkecil)" />}

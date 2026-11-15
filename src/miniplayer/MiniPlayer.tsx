@@ -14,6 +14,7 @@ import { useMedia } from "../features/media/useMedia";
 import { LyricsSettings } from "../features/lyrics/LyricsControls";
 import { LyricsPair } from "../features/lyrics/LyricsPair";
 import { LyricsView } from "../features/lyrics/LyricsView";
+import { VolumeControl } from "../features/media/VolumeControl";
 import { useLyrics } from "../features/lyrics/useLyrics";
 
 /** Elements that handle their own pointer input instead of dragging the window. */
@@ -82,6 +83,7 @@ export function MiniPlayer() {
             compact ? "right-1 top-1/2 -translate-y-1/2 flex-col" : "right-2 top-2"
           }`}
         >
+          {media.active && <VolumeControl media={media} variant={compact ? "icon" : "mini"} />}
           <button
             type="button"
             onClick={() => updateSetting("miniPlayerCompact", !compact)}

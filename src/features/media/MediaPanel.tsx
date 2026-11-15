@@ -13,6 +13,7 @@ import { toggleMiniPlayer, useMiniPlayerVisible } from "./miniPlayerBridge";
 import { useMedia } from "./useMedia";
 import { Artwork } from "./Artwork";
 import { SourceLink } from "./SourceLink";
+import { VolumeControl } from "./VolumeControl";
 
 /**
  * Media tab. Cover on the left, the centre is only the lyrics (or the track
@@ -103,7 +104,12 @@ export default function MediaPanel({ requestClose }: TabPanelProps) {
         </div>
       </div>
 
-      <MediaProgress media={media} />
+      <div className="flex items-center gap-4">
+        <div className="min-w-0 flex-1">
+          <MediaProgress media={media} />
+        </div>
+        <VolumeControl media={media} className="w-[150px] shrink-0" />
+      </div>
 
       {settingsOpen && (
         <div className="glass-well rounded-2xl px-3.5 py-3">

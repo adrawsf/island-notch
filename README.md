@@ -42,6 +42,7 @@ src-tauri/src/
   tray.rs              Ikon dan menu tray (klik kiri buka/tutup notch, klik kanan menu singkat)
   shortcut.rs          Shortcut global buka/tutup notch
   media.rs             Now playing via SMTC (polling, artwork, kontrol, seek)
+  volume.rs            Volume app yang sedang memutar (Core Audio, seperti slider di Volume Mixer)
   lyrics.rs            HTTP penyedia lirik (allowlist endpoint; pencocokan dan parsing di TS)
   teleprompter.rs      Window teleprompter (bisa disembunyikan dari rekaman/screen share)
   miniplayer.rs        Window mini player (dibuat sekali, disembunyikan saat ditutup)
@@ -66,7 +67,7 @@ src-tauri/src/
 
 1. **Kerangka** ✅: project, shell notch, registry tab, setting, click-through.
 2. **Shell lanjutan** ✅: pilih monitor, ukuran dan bentuk (notch/island), tema, widget idle, notifikasi notch (antrean toast), tray, autostart, shortcut global (default `Ctrl+Alt+N`, bisa direkam ulang).
-3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu; romanisasi Jepang/Korea/Mandarin) ✅, mini player ✅.
+3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu; romanisasi Jepang/Korea/Mandarin) ✅, mini player ✅, volume app musik (tab Media, mini player, scroll di pill) ✅.
 4. **Beranda kustom** ✅: kartu jam (ukuran + bunyi tiap jam dengan jam tenang), world clock, gambar/GIF, kucing piksel (juga bisa jadi widget idle). **Produktivitas:** Catatan (teks + checklist, gaya Keep) ✅, Pomodoro + ambience sintesis (hujan, ombak, api, angin, noise) ✅, Teleprompter ✅, Kalender Google.
 5. **Sistem:** Clipboard dan OCR, volume mixer, monitor sistem, Drop Shelf, pusat notifikasi.
 6. **Window pengaturan** ✅ (glass, sidebar kategori, dibuka dari tombol ⚙ di notch atau tray), updater, dan rilis.

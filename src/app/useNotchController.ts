@@ -13,6 +13,8 @@ import { findTab } from "./tabs/registry";
 import { hideTooltip } from "../shared/ui/TooltipLayer";
 
 const HOVER_OPEN_DELAY_MS = 120;
+/** Over the media pill the notch waits a little longer, so the wheel can reach the volume first. */
+const MEDIA_HOVER_OPEN_DELAY_MS = 350;
 
 /** A text field inside the notch has focus: leaving with the cursor must not close it. */
 function isEditing(): boolean {
@@ -22,13 +24,15 @@ function isEditing(): boolean {
 interface NotchControllerOptions {
   /** Hovering does not open the notch (e.g. a toast is showing and should be clickable). */
   suppressHoverOpen?: boolean;
+  /** The collapsed pill shows media: open on hover a bit later (wheel = volume). */
+  mediaPill?: boolean;
 }
 
 /**
  * The notch always opens on the tab the user last picked (`lastTabId`),
  * whatever is playing or counting down.
  */
-export function useNotchController({ suppressHoverOpen = false }: NotchControllerOptions = {}) {
+export function useNotchController({ suppressHoverOpen = false, mediaPill = false }: NotchControllerOptions = {}) {
   const settings = useSettings();
   const [expanded, setExpanded] = useState(false);
   const [activeTabId, setActiveTabId] = useState(() => findTab(settings.lastTabId).id);
@@ -39,6 +43,10 @@ export function useNotchController({ suppressHoverOpen = false }: NotchControlle
   settingsRef.current = settings;
   const suppressHoverOpenRef = useRef(suppressHoverOpen);
   suppressHoverOpenRef.current = suppressHoverOpen;
+  const mediaPillRef = useRef(mediaPill);
+  mediaPillRef.current = mediaPill;
+  /** The wheel was used on the pill: no hover-open until the cursor leaves. */
+  const heldRef = useRef(false);
 
   const clearTimer = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -78,9 +86,11 @@ export function useNotchController({ suppressHoverOpen = false }: NotchControlle
       clearTimer();
       if (!inside) hideTooltip();
       const { expandOnHover, closeDelayMs } = settingsRef.current;
+      if (!inside) heldRef.current = false;
       if (inside) {
-        if (expandOnHover && !suppressHoverOpenRef.current) {
-          timer.current = setTimeout(() => setOpen(true), HOVER_OPEN_DELAY_MS);
+        if (expandOnHover && !suppressHoverOpenRef.current && !heldRef.current) {
+          const delay = mediaPillRef.current && !expandedRef.current ? MEDIA_HOVER_OPEN_DELAY_MS : HOVER_OPEN_DELAY_MS;
+          timer.current = setTimeout(() => setOpen(true), delay);
         }
       } else if (!isEditing()) {
         // While typing, only a click outside, Escape or the shortcut closes it.
@@ -89,6 +99,13 @@ export function useNotchController({ suppressHoverOpen = false }: NotchControlle
     },
     [setOpen],
   );
+
+  /** Keeps the collapsed notch collapsed while the cursor stays on it (wheel on the pill). */
+  const holdCollapsed = useCallback(() => {
+    if (expandedRef.current) return;
+    heldRef.current = true;
+    clearTimer();
+  }, []);
 
   const selectTab = useCallback((id: string) => {
     setActiveTabId(id);
@@ -112,5 +129,5 @@ export function useNotchController({ suppressHoverOpen = false }: NotchControlle
     };
   }, [handleHover, close, toggle]);
 
-  return { expanded, activeTab: findTab(activeTabId), open, close, handleHover, selectTab };
+  return { expanded, activeTab: findTab(activeTabId), open, close, handleHover, holdCollapsed, selectTab };
 }

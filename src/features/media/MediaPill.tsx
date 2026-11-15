@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type WheelEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Lyrics } from "../lyrics/types";
 import { currentLineIndex } from "../lyrics/lyricsText";
@@ -5,24 +6,52 @@ import { useRomanized } from "../lyrics/romanize";
 import { useLyricPosition, useLyrics } from "../lyrics/useLyrics";
 import type { MediaState } from "./mediaBridge";
 import { Artwork } from "./Artwork";
+import { stepAppVolume, useAppVolume, VOLUME_STEP } from "./volume";
+import { volumeIcon } from "./VolumeControl";
+
+/** How long the volume level stays in the pill after the last wheel step. */
+const VOLUME_FLASH_MS = 1200;
 
 interface MediaPillProps {
   media: MediaState;
   /** Show the current synced lyric line instead of the title while playing. */
   showLyrics: boolean;
   onClick: () => void;
+  /** The wheel changed the volume: the notch should stay collapsed. */
+  onWheelVolume?: () => void;
 }
 
 /** Collapsed-notch content while media is active: cover plus title or the current lyric line. */
-export function MediaPill({ media, showLyrics, onClick }: MediaPillProps) {
+export function MediaPill({ media, showLyrics, onClick, onWheelVolume }: MediaPillProps) {
   const lyrics = useLyrics(media, showLyrics);
   const synced = lyrics.status === "found" && lyrics.lyrics.synced && !media.tabOnly ? lyrics.lyrics : null;
   const showingLyrics = synced !== null && media.isPlaying;
+  const volume = useAppVolume(media);
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
+
+  // Wheel over the pill: volume up/down, the level shows for a moment.
+  const onWheel = (e: WheelEvent) => {
+    if (e.deltaY === 0 || !volume) return;
+    onWheelVolume?.();
+    stepAppVolume(e.deltaY < 0 ? VOLUME_STEP : -VOLUME_STEP);
+    setFlash(true);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(false), VOLUME_FLASH_MS);
+  };
 
   return (
     <button
       type="button"
       onClick={onClick}
+      onWheel={onWheel}
       aria-label={`Sedang diputar: ${media.title}`}
       // Hugs its text: the notch widens and narrows with each lyric line (the
       // shell springs between the measured widths); very long lines truncate.
@@ -30,9 +59,30 @@ export function MediaPill({ media, showLyrics, onClick }: MediaPillProps) {
     >
       <Artwork src={media.artwork} className="h-[22px] w-[22px] shrink-0 rounded-full" iconSize={12} />
       <span className="relative min-w-0 flex-1 overflow-hidden text-[12px] font-semibold">
-        {showingLyrics ? <LyricLine media={media} lyrics={synced} /> : <TitleLine media={media} />}
+        {flash && volume ? (
+          <VolumeLine volume={volume.volume} muted={volume.muted} />
+        ) : showingLyrics ? (
+          <LyricLine media={media} lyrics={synced} />
+        ) : (
+          <TitleLine media={media} />
+        )}
       </span>
     </button>
+  );
+}
+
+/** The volume level in place of the title while the wheel is in use. */
+function VolumeLine({ volume, muted }: { volume: number; muted: boolean }) {
+  const Icon = volumeIcon(volume, muted);
+  const percent = muted ? 0 : Math.round(volume * 100);
+  return (
+    <span className="flex items-center gap-2">
+      <Icon size={13} className="shrink-0" />
+      <span className="relative h-1 w-24 overflow-hidden rounded-full bg-notch-fg/20">
+        <span className="absolute inset-y-0 left-0 rounded-full bg-notch-fg" style={{ width: `${percent}%` }} />
+      </span>
+      <span className="w-8 tabular-nums">{percent}%</span>
+    </span>
   );
 }
 

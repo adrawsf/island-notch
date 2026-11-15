@@ -14,6 +14,7 @@ mod shell;
 mod shortcut;
 mod teleprompter;
 mod tray;
+mod volume;
 mod window;
 
 pub use window::WEBVIEW_BROWSER_ARGS;
@@ -50,6 +51,8 @@ pub fn run() {
             media::media_control,
             media::media_seek,
             media_source::media_open_source,
+            volume::media_volume_get,
+            volume::media_volume_set,
             lyrics::lyrics_request,
             miniplayer::mini_player_toggle,
             miniplayer::mini_player_hide,
