@@ -123,6 +123,16 @@ export function useNotchController({
     updateSetting("lastTabId", id);
   }, []);
 
+  /** Opens on a tab without making it the remembered one (a file dragged onto the notch). */
+  const openTab = useCallback(
+    (id: string) => {
+      setActiveTabId(id);
+      clearTimer();
+      setOpen(true);
+    },
+    [setOpen],
+  );
+
   useEffect(() => {
     const offHover = onNotchHover(handleHover);
     const offOutside = onClickOutside(() => {
@@ -142,5 +152,5 @@ export function useNotchController({
     };
   }, [handleHover, close, toggle]);
 
-  return { expanded, activeTab: findTab(activeTabId), open, close, handleHover, holdCollapsed, selectTab };
+  return { expanded, activeTab: findTab(activeTabId), open, openTab, close, handleHover, holdCollapsed, selectTab };
 }

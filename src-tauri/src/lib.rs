@@ -16,6 +16,7 @@ mod mixer;
 mod ocr;
 mod process;
 mod settings_window;
+mod shelf;
 mod shell;
 mod shortcut;
 mod sysmon;
@@ -36,6 +37,7 @@ pub fn run() {
         .manage(shell::ShellState::default())
         .manage(media::MediaStore::default())
         .manage(clipboard::ClipboardStore::default())
+        .manage(shelf::ShelfStore::default())
         .setup(|app| {
             window::setup_main_window(app.handle())?;
             tray::create(app.handle())?;
@@ -44,6 +46,7 @@ pub fn run() {
             media::start(app.handle().clone());
             clipboard::start(app.handle().clone());
             sysmon::start();
+            shelf::start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -87,6 +90,15 @@ pub fn run() {
             mixer::mixer_set_mic_muted,
             mixer::mixer_mic_muted,
             mixer::mixer_app_icon,
+            shelf::shelf_list,
+            shelf::shelf_remove,
+            shelf::shelf_clear,
+            shelf::shelf_add_text,
+            shelf::shelf_open,
+            shelf::shelf_reveal,
+            shelf::shelf_copy,
+            shelf::shelf_thumb,
+            shelf::shelf_drag_out,
             sysmon::sysmon_live,
             sysmon::sysmon_brief,
             sysmon::sysmon_disks,

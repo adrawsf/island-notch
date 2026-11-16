@@ -14,6 +14,7 @@ import { PomodoroPill } from "../features/pomodoro/PomodoroPill";
 import { usePomodoro } from "../features/pomodoro/pomodoroStore";
 import { setPrompterInNotch, usePrompterInNotch } from "../features/teleprompter/notchPrompter";
 import { useMicMuted } from "../features/sound/mixerBridge";
+import { onShelfDrag } from "../features/shelf/shelfBridge";
 import { DEFAULT_TAB_WIDTH, preloadPanels } from "./tabs/registry";
 import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
@@ -78,6 +79,15 @@ export function NotchShell() {
   useEffect(() => {
     if (prompterInNotch && (!notch.expanded || notch.activeTab.id !== "teleprompter")) setPrompterInNotch(false);
   }, [prompterInNotch, notch.expanded, notch.activeTab.id]);
+  // Dragging a file, text or link onto the notch opens the Shelf to drop it.
+  const { openTab } = notch;
+  useEffect(
+    () =>
+      onShelfDrag((active) => {
+        if (active && !prompterInNotch) openTab("shelf");
+      }),
+    [openTab, prompterInNotch],
+  );
   const theme = useResolvedTheme(settings.theme);
 
   useEffect(preloadPanels, []);
