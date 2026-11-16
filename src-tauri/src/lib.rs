@@ -62,6 +62,7 @@ pub fn run() {
             teleprompter::teleprompter_close,
             teleprompter::teleprompter_visible,
             teleprompter::teleprompter_set_capture_excluded,
+            teleprompter::teleprompter_hit_regions,
             window::reposition_main_window,
         ])
         .run(tauri::generate_context!())

@@ -26,13 +26,22 @@ interface NotchControllerOptions {
   suppressHoverOpen?: boolean;
   /** The collapsed pill shows media: open on hover a bit later (wheel = volume). */
   mediaPill?: boolean;
+  /**
+   * Stay open: leaving with the cursor, clicking outside and Escape do not
+   * close it (the teleprompter runs in the notch). The shortcut still does.
+   */
+  holdOpen?: boolean;
 }
 
 /**
  * The notch always opens on the tab the user last picked (`lastTabId`),
  * whatever is playing or counting down.
  */
-export function useNotchController({ suppressHoverOpen = false, mediaPill = false }: NotchControllerOptions = {}) {
+export function useNotchController({
+  suppressHoverOpen = false,
+  mediaPill = false,
+  holdOpen = false,
+}: NotchControllerOptions = {}) {
   const settings = useSettings();
   const [expanded, setExpanded] = useState(false);
   const [activeTabId, setActiveTabId] = useState(() => findTab(settings.lastTabId).id);
@@ -45,6 +54,8 @@ export function useNotchController({ suppressHoverOpen = false, mediaPill = fals
   suppressHoverOpenRef.current = suppressHoverOpen;
   const mediaPillRef = useRef(mediaPill);
   mediaPillRef.current = mediaPill;
+  const holdOpenRef = useRef(holdOpen);
+  holdOpenRef.current = holdOpen;
   /** The wheel was used on the pill: no hover-open until the cursor leaves. */
   const heldRef = useRef(false);
 
@@ -92,7 +103,7 @@ export function useNotchController({ suppressHoverOpen = false, mediaPill = fals
           const delay = mediaPillRef.current && !expandedRef.current ? MEDIA_HOVER_OPEN_DELAY_MS : HOVER_OPEN_DELAY_MS;
           timer.current = setTimeout(() => setOpen(true), delay);
         }
-      } else if (!isEditing()) {
+      } else if (!isEditing() && !holdOpenRef.current) {
         // While typing, only a click outside, Escape or the shortcut closes it.
         timer.current = setTimeout(() => setOpen(false), closeDelayMs);
       }
@@ -114,10 +125,12 @@ export function useNotchController({ suppressHoverOpen = false, mediaPill = fals
 
   useEffect(() => {
     const offHover = onNotchHover(handleHover);
-    const offOutside = onClickOutside(close);
+    const offOutside = onClickOutside(() => {
+      if (!holdOpenRef.current) close();
+    });
     const offToggle = onToggleRequest(toggle);
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && expandedRef.current) close();
+      if (e.key === "Escape" && expandedRef.current && !holdOpenRef.current) close();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {

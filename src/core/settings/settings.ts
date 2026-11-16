@@ -71,6 +71,10 @@ export interface AppSettings {
   teleprompterCountdown: number;
   /** Keep the teleprompter out of screenshots, recordings and screen sharing. */
   teleprompterHideFromCapture: boolean;
+  /** Teleprompter window background opacity, 0.1-1 (lower = see-through). */
+  teleprompterOpacity: number;
+  /** The teleprompter window lets clicks through, except on its toolbar. */
+  teleprompterClickThrough: boolean;
   /** Home tab cards shown, in order (see src/features/home/homeCards.ts). */
   homeCards: string[];
   /** Size of the big clock on the home tab. */
@@ -153,6 +157,8 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   teleprompterSpeed: { default: 40, valid: inRange(10, 200) },
   teleprompterCountdown: { default: 3, valid: inRange(0, 10) },
   teleprompterHideFromCapture: { default: true, valid: isBoolean },
+  teleprompterOpacity: { default: 0.85, valid: inRange(0.1, 1) },
+  teleprompterClickThrough: { default: true, valid: isBoolean },
   homeCards: { default: ["clock", "worldClocks", "image", "pet"], valid: isIdList },
   clockSize: { default: "medium", valid: oneOf("small", "medium", "large") },
   worldClocks: { default: [], valid: isZoneList },

@@ -374,6 +374,24 @@ function TeleprompterSection() {
         />
         <span className="w-8 text-xs text-notch-muted">dtk</span>
       </Row>
+      <Row title="Kepekatan latar window" hint="Makin rendah, makin tembus pandang. Teks diberi bayangan supaya tetap terbaca.">
+        <Slider
+          value={Math.round(s.teleprompterOpacity * 100)}
+          min={10}
+          max={100}
+          step={5}
+          onChange={(v) => set("teleprompterOpacity", v / 100)}
+          label="Kepekatan latar"
+          format={(v) => `${v}%`}
+        />
+      </Row>
+      <Row title="Tembus klik" hint="Window prompter tidak menghalangi klik ke app di belakangnya; hanya toolbar yang bisa diklik.">
+        <Toggle
+          checked={s.teleprompterClickThrough}
+          onChange={(v) => set("teleprompterClickThrough", v)}
+          label="Tembus klik"
+        />
+      </Row>
       <Row title="Sembunyikan dari rekaman" hint="Tetap terlihat di layarmu, tapi tidak muncul di screenshot, rekaman, atau screen share.">
         <Toggle
           checked={s.teleprompterHideFromCapture}

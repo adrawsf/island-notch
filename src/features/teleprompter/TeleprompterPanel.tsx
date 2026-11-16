@@ -1,9 +1,11 @@
-import { useEffect } from "react";
-import { EyeOff, Play, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect } from "react";
+import { AppWindow, EyeOff, Play, Plus, Trash2 } from "lucide-react";
 import type { TabPanelProps } from "../../app/tabs/types";
 import { updateSetting } from "../../core/settings/settings";
 import { useSettings } from "../../core/settings/useSettings";
 import { openTeleprompter, setCaptureExcluded, useTeleprompterVisible } from "./teleprompterBridge";
+import { setPrompterInNotch, usePrompterInNotch } from "./notchPrompter";
+import { PrompterView } from "./PrompterView";
 import {
   activeScript,
   createScript,
@@ -13,12 +15,24 @@ import {
   updateScript,
 } from "./teleprompterStore";
 
-/** Prompter tab: pick/edit a script, then open the teleprompter window. */
-export default function TeleprompterPanel(_props: TabPanelProps) {
+/**
+ * Prompter tab: pick/edit a script, then run it here in the notch or in the
+ * teleprompter window.
+ */
+export default function TeleprompterPanel(props: TabPanelProps) {
+  const inNotch = usePrompterInNotch();
+  const exit = useCallback(() => setPrompterInNotch(false), []);
+  // Leaving the tab mid-run ends it.
+  useEffect(() => () => setPrompterInNotch(false), []);
+  return inNotch ? <PrompterView variant="notch" onExit={exit} autoStart /> : <ScriptEditor {...props} />;
+}
+
+function ScriptEditor(_props: TabPanelProps) {
   const data = teleprompterData.use();
   const settings = useSettings();
   const visible = useTeleprompterVisible();
   const script = activeScript(data);
+  const canStart = !!script && !!script.body.trim();
 
   // Apply the capture setting to an already open teleprompter right away.
   useEffect(() => {
@@ -53,14 +67,27 @@ export default function TeleprompterPanel(_props: TabPanelProps) {
             </li>
           ))}
         </ul>
-        <button
-          type="button"
-          disabled={!script || !script.body.trim()}
-          onClick={() => openTeleprompter(settings.teleprompterHideFromCapture)}
-          className="flex h-8 items-center justify-center gap-1.5 rounded-full bg-notch-accent px-3 text-xs font-semibold text-white transition-[opacity,transform] hover:opacity-90 active:scale-95 disabled:opacity-40"
-        >
-          <Play size={12} fill="currentColor" /> {visible ? "Fokus" : "Buka prompter"}
-        </button>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            disabled={!canStart}
+            onClick={() => setPrompterInNotch(true)}
+            className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-notch-accent px-2 text-xs font-semibold text-white transition-[opacity,transform] hover:opacity-90 active:scale-95 disabled:opacity-40"
+            data-tip="Mulai di notch (notch tetap terbuka)"
+          >
+            <Play size={12} fill="currentColor" /> Mulai
+          </button>
+          <button
+            type="button"
+            disabled={!canStart}
+            onClick={() => openTeleprompter(settings.teleprompterHideFromCapture)}
+            className="glass-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
+            aria-label={visible ? "Fokus ke window prompter" : "Buka di window terpisah"}
+            data-tip={visible ? "Fokus ke window prompter" : "Buka di window terpisah"}
+          >
+            <AppWindow size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Editor + controls */}

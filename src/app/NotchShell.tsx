@@ -11,6 +11,7 @@ import { useMedia } from "../features/media/useMedia";
 import { useMiniPlayerVisible } from "../features/media/miniPlayerBridge";
 import { PomodoroPill } from "../features/pomodoro/PomodoroPill";
 import { usePomodoro } from "../features/pomodoro/pomodoroStore";
+import { setPrompterInNotch, usePrompterInNotch } from "../features/teleprompter/notchPrompter";
 import { DEFAULT_TAB_WIDTH, preloadPanels } from "./tabs/registry";
 import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
@@ -63,10 +64,16 @@ export function NotchShell() {
       : mediaInPill
         ? "media"
         : "widget";
+  const prompterInNotch = usePrompterInNotch();
   const notch = useNotchController({
     suppressHoverOpen: toast !== null,
     mediaPill: idle === "media",
+    holdOpen: prompterInNotch,
   });
+  // Closing the notch (shortcut, tray) or switching tabs ends a teleprompter run in it.
+  useEffect(() => {
+    if (prompterInNotch && (!notch.expanded || notch.activeTab.id !== "teleprompter")) setPrompterInNotch(false);
+  }, [prompterInNotch, notch.expanded, notch.activeTab.id]);
   const theme = useResolvedTheme(settings.theme);
 
   useEffect(preloadPanels, []);

@@ -127,7 +127,7 @@ pub fn start(app: AppHandle) {
 
 /// Whether the window currently has `WS_EX_TRANSPARENT` (clicks pass through).
 #[cfg(windows)]
-fn is_click_through(window: &tauri::WebviewWindow) -> Option<bool> {
+pub(crate) fn is_click_through(window: &tauri::WebviewWindow) -> Option<bool> {
     use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TRANSPARENT};
     // Tauri's HWND comes from a different `windows` version; rewrap the raw pointer.
@@ -138,7 +138,7 @@ fn is_click_through(window: &tauri::WebviewWindow) -> Option<bool> {
 
 /// Sends a zero-distance mouse move so WebView2 notices the cursor.
 #[cfg(windows)]
-fn nudge_cursor() {
+pub(crate) fn nudge_cursor() {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEINPUT,
     };

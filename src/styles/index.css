@@ -76,6 +76,12 @@ body,
     inset 0 -1px 6px rgb(255 255 255 / calc(var(--glass-lens) * 0.5));
 }
 
+/* See-through teleprompter: grain, glow and rim fade with the background. */
+.glass.prompter-surface::before,
+.glass.prompter-surface::after {
+  opacity: var(--surface-opacity, 1);
+}
+
 /* Soft specular glow pooled in the lit corner. */
 .glass::before {
   content: "";
