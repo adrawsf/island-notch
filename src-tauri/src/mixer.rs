@@ -77,7 +77,7 @@ fn cached<T: Clone>(cache: &Mutex<Option<HashMap<String, T>>>, key: &str, make: 
 }
 
 /// "Google Chrome" from chrome.exe's version info, else "Chrome".
-fn app_name(path: &str) -> String {
+pub(crate) fn app_name(path: &str) -> String {
     cached(&NAMES, path, || {
         #[cfg(windows)]
         if let Some(name) = win::file_description(path) {

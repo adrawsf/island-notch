@@ -86,6 +86,10 @@ export interface AppSettings {
   ocrShortcut: string;
   /** OCR language tag (e.g. "en-US"), or "auto" for the Windows languages. */
   ocrLanguage: string;
+  /** Toasts when CPU/RAM stay above 90% or the battery runs low. */
+  systemAlerts: boolean;
+  /** Battery percent that triggers the low-battery toast. */
+  batteryLowPercent: number;
   /** Home tab cards shown, in order (see src/features/home/homeCards.ts). */
   homeCards: string[];
   /** Size of the big clock on the home tab. */
@@ -176,6 +180,8 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   ocrShortcutEnabled: { default: true, valid: isBoolean },
   ocrShortcut: { default: "Control+Alt+T", valid: isNonEmptyString },
   ocrLanguage: { default: "auto", valid: isNonEmptyString },
+  systemAlerts: { default: true, valid: isBoolean },
+  batteryLowPercent: { default: 20, valid: inRange(5, 50) },
   homeCards: { default: ["clock", "worldClocks", "image", "pet"], valid: isIdList },
   clockSize: { default: "medium", valid: oneOf("small", "medium", "large") },
   worldClocks: { default: [], valid: isZoneList },

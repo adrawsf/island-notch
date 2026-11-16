@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import {
+  Activity,
   ClipboardList,
   House,
   Info,
@@ -500,6 +501,32 @@ function ClipboardSection({ setCapturingKeys }: SectionProps) {
   );
 }
 
+// ---------- Sistem ----------
+
+function SystemSection() {
+  const s = useSettings();
+  return (
+    <Group title="Peringatan">
+      <Row
+        title="Peringatan sistem"
+        hint="Notch memberi tahu kalau CPU atau memori di atas 90% selama 30 detik, atau baterai hampir habis."
+      >
+        <Toggle checked={s.systemAlerts} onChange={(v) => set("systemAlerts", v)} label="Peringatan sistem" />
+      </Row>
+      <Row title="Baterai lemah" hint="Saat tidak dicas dan baterai turun sampai angka ini." disabled={!s.systemAlerts}>
+        <Stepper
+          value={s.batteryLowPercent}
+          min={5}
+          max={50}
+          onChange={(v) => set("batteryLowPercent", v)}
+          label="Batas baterai lemah (persen)"
+        />
+        <span className="w-8 text-xs text-notch-muted">%</span>
+      </Row>
+    </Group>
+  );
+}
+
 // ---------- Tentang ----------
 
 function AboutSection() {
@@ -557,5 +584,6 @@ export const SECTIONS: SectionDefinition[] = [
   { id: "pomodoro", label: "Pomodoro", icon: Timer, Component: PomodoroSection },
   { id: "teleprompter", label: "Teleprompter", icon: ScrollText, Component: TeleprompterSection },
   { id: "clipboard", label: "Clipboard & OCR", icon: ClipboardList, Component: ClipboardSection },
+  { id: "system", label: "Sistem", icon: Activity, Component: SystemSection },
   { id: "about", label: "Tentang", icon: Info, Component: AboutSection },
 ];

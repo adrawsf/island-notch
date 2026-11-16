@@ -8,7 +8,7 @@
  * 2. Add an entry below. Order here is the order in the tab bar.
  */
 import { lazy, type ComponentType } from "react";
-import { AudioLines, ClipboardList, House, Music, NotebookPen, ScrollText, Timer } from "lucide-react";
+import { Activity, AudioLines, ClipboardList, House, Music, NotebookPen, ScrollText, Timer } from "lucide-react";
 import type { LazyPanel, TabDefinition, TabPanelProps } from "./types";
 
 /** `lazy()` that can also be preloaded. */
@@ -40,6 +40,13 @@ export const TABS: TabDefinition[] = [
     icon: AudioLines,
     width: 520,
     Panel: panel(() => import("../../features/sound/SoundPanel")),
+  },
+  {
+    id: "system",
+    label: "Sistem",
+    icon: Activity,
+    width: 580,
+    Panel: panel(() => import("../../features/system/SystemPanel")),
   },
   {
     id: "notes",

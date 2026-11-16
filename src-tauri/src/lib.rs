@@ -18,6 +18,7 @@ mod process;
 mod settings_window;
 mod shell;
 mod shortcut;
+mod sysmon;
 mod teleprompter;
 mod tray;
 mod volume;
@@ -42,6 +43,7 @@ pub fn run() {
             foreground::start(app.handle().clone());
             media::start(app.handle().clone());
             clipboard::start(app.handle().clone());
+            sysmon::start();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -85,6 +87,11 @@ pub fn run() {
             mixer::mixer_set_mic_muted,
             mixer::mixer_mic_muted,
             mixer::mixer_app_icon,
+            sysmon::sysmon_live,
+            sysmon::sysmon_brief,
+            sysmon::sysmon_disks,
+            sysmon::sysmon_processes,
+            sysmon::sysmon_end_process,
             ocr::ocr_snip_start,
             ocr::ocr_snip_finish,
             ocr::ocr_languages,

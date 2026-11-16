@@ -45,6 +45,7 @@ src-tauri/src/
   media.rs             Now playing via SMTC (polling, artwork, kontrol, seek)
   volume.rs            Volume app yang sedang memutar (Core Audio, seperti slider di Volume Mixer)
   mixer.rs             Volume mixer tab Suara: volume utama, per app (ikon + nama dari exe), pilih output (IPolicyConfig), mute mic
+  sysmon.rs            Monitor sistem: CPU, RAM, GPU (PDH, seperti Task Manager), jaringan, disk, baterai, app terberat + akhiri
   lyrics.rs            HTTP penyedia lirik (allowlist endpoint; pencocokan dan parsing di TS)
   teleprompter.rs      Window teleprompter (tembus klik kecuali toolbar, bisa disembunyikan dari rekaman/screen share)
   miniplayer.rs        Window mini player (dibuat sekali, disembunyikan saat ditutup)
@@ -75,5 +76,5 @@ src-tauri/src/
 2. **Shell lanjutan** ✅: pilih monitor, ukuran dan bentuk (notch/island), tema, widget idle, notifikasi notch (antrean toast), tray, autostart, shortcut global (default `Ctrl+Alt+N`, bisa direkam ulang).
 3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu; romanisasi Jepang/Korea/Mandarin) ✅, mini player ✅, volume app musik (tab Media, mini player, scroll di pill) ✅.
 4. **Beranda kustom** ✅: kartu jam (ukuran + bunyi tiap jam dengan jam tenang), world clock, gambar/GIF, kucing piksel (juga bisa jadi widget idle). **Produktivitas:** Catatan (teks + checklist, gaya Keep) ✅, Pomodoro + ambience sintesis (hujan, ombak, api, angin, noise) ✅, Teleprompter (di notch atau window tembus pandang/tembus klik) ✅, Kalender Google.
-5. **Sistem:** Clipboard (riwayat teks + gambar, pin, cari, klik untuk paste) dan OCR (potong area layar, shortcut `Ctrl+Alt+T`) ✅, volume mixer (tab Suara: volume utama, per app, pilih output, mute mic + tanda di pill, scroll pill = volume utama) ✅, monitor sistem, Drop Shelf, pusat notifikasi.
+5. **Sistem:** Clipboard (riwayat teks + gambar, pin, cari, klik untuk paste) dan OCR (potong area layar, shortcut `Ctrl+Alt+T`) ✅, volume mixer (tab Suara: volume utama, per app, pilih output, mute mic + tanda di pill, scroll pill = volume utama) ✅, monitor sistem (tab Sistem: CPU, RAM, GPU, jaringan + grafik 60 detik, app terberat, disk, baterai; widget pill; peringatan) ✅, Drop Shelf, pusat notifikasi.
 6. **Window pengaturan** ✅ (glass, sidebar kategori, dibuka dari tombol ⚙ di notch atau tray), updater, dan rilis.
