@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import {
+  ClipboardList,
   House,
   Info,
   Music,
@@ -29,6 +30,7 @@ import { IDLE_WIDGETS } from "../app/idle/idleWidgets";
 import { LYRICS_SOURCE_OPTIONS } from "../features/lyrics/sources";
 import { toggleMiniPlayer, useMiniPlayerVisible } from "../features/media/miniPlayerBridge";
 import { AMBIENCE_SOUNDS } from "../features/pomodoro/ambience/sounds";
+import { listOcrLanguages, type OcrLanguage } from "../features/clipboard/clipboardBridge";
 import { prettyShortcut } from "../shared/format";
 import { Stepper } from "../shared/ui/Stepper";
 import { Group, ReorderableToggles, Row, Segmented, Select, Slider, TextButton, Toggle } from "./controls";
@@ -403,6 +405,101 @@ function TeleprompterSection() {
   );
 }
 
+// ---------- Clipboard & OCR ----------
+
+const HISTORY_SIZES = [50, 100, 200, 500];
+
+function ClipboardSection({ setCapturingKeys }: SectionProps) {
+  const s = useSettings();
+  const [languages, setLanguages] = useState<OcrLanguage[]>([]);
+  const [shortcutError, setShortcutError] = useState<string | null>(null);
+
+  // Languages can be added in Windows while this window is open.
+  useOnFocus(
+    useCallback(() => {
+      listOcrLanguages().then(setLanguages);
+    }, [])
+  );
+
+  useEffect(() => {
+    getShellStatus().then((r) => setShortcutError(r?.ocrShortcutError ?? null));
+    return onShellApplied((r) => setShortcutError(r.ocrShortcutError));
+  }, []);
+
+  const sizes = HISTORY_SIZES.includes(s.clipboardMaxItems) ? HISTORY_SIZES : [...HISTORY_SIZES, s.clipboardMaxItems];
+  const languageOptions = [
+    { id: "auto", label: "Ikuti bahasa Windows" },
+    ...languages.map((l) => ({ id: l.tag, label: l.name })),
+  ];
+  if (s.ocrLanguage !== "auto" && !languages.some((l) => l.tag === s.ocrLanguage)) {
+    languageOptions.push({ id: s.ocrLanguage, label: `${s.ocrLanguage} (tidak terpasang)` });
+  }
+  const defaultShortcut = defaultSetting("ocrShortcut");
+
+  return (
+    <>
+      <Group title="Riwayat clipboard">
+        <Row title="Catat yang disalin" hint="Teks dan gambar yang kamu salin tersimpan di tab Clipboard, juga setelah restart.">
+          <Toggle checked={s.clipboardHistory} onChange={(v) => set("clipboardHistory", v)} label="Catat yang disalin" />
+        </Row>
+        <Row title="Jumlah maksimal" hint="Yang paling lama terhapus duluan. Item yang disematkan tidak ikut terhapus.">
+          <Select
+            value={String(s.clipboardMaxItems)}
+            options={sizes.map((n) => ({ id: String(n), label: `${n} item` }))}
+            onChange={(v) => set("clipboardMaxItems", Number(v))}
+            label="Jumlah maksimal"
+          />
+        </Row>
+        <Row title="Paste langsung saat diklik" hint="Kalau mati, klik item hanya menyalinnya; kamu paste sendiri.">
+          <Toggle
+            checked={s.clipboardAutoPaste}
+            onChange={(v) => set("clipboardAutoPaste", v)}
+            label="Paste langsung saat diklik"
+          />
+        </Row>
+      </Group>
+
+      <Group title="Ambil teks dari layar (OCR)">
+        <Row title="Shortcut OCR" hint="Pilih area layar, teksnya langsung tersalin. Tanpa perlu membuka notch.">
+          <Toggle checked={s.ocrShortcutEnabled} onChange={(v) => set("ocrShortcutEnabled", v)} label="Shortcut OCR" />
+        </Row>
+        <Row
+          title="Kombinasi tombol"
+          disabled={!s.ocrShortcutEnabled}
+          hint={
+            s.ocrShortcut !== defaultShortcut ? (
+              <button type="button" className="text-notch-accent hover:underline" onClick={() => set("ocrShortcut", defaultShortcut)}>
+                Kembalikan ke {prettyShortcut(defaultShortcut)}
+              </button>
+            ) : (
+              "Klik lalu tekan kombinasi baru."
+            )
+          }
+          below={
+            s.ocrShortcutEnabled && shortcutError ? (
+              <span className="rounded-xl bg-red-500/15 px-3 py-2 text-xs text-red-400">
+                Tidak bisa dipasang: {shortcutError}.
+              </span>
+            ) : null
+          }
+        >
+          <ShortcutRecorder value={s.ocrShortcut} onChange={(v) => set("ocrShortcut", v)} onRecordingChange={setCapturingKeys} />
+        </Row>
+        <Row
+          title="Bahasa"
+          hint={
+            languages.length === 0
+              ? "Belum ada bahasa OCR di Windows. Tambahkan bahasa di Pengaturan Windows → Waktu & bahasa → Bahasa."
+              : "Bahasa lain bisa ditambahkan di Pengaturan Windows → Waktu & bahasa → Bahasa."
+          }
+        >
+          <Select value={s.ocrLanguage} options={languageOptions} onChange={(v) => set("ocrLanguage", v)} label="Bahasa OCR" />
+        </Row>
+      </Group>
+    </>
+  );
+}
+
 // ---------- Tentang ----------
 
 function AboutSection() {
@@ -459,5 +556,6 @@ export const SECTIONS: SectionDefinition[] = [
   { id: "media", label: "Media & Lirik", icon: Music, Component: MediaSection },
   { id: "pomodoro", label: "Pomodoro", icon: Timer, Component: PomodoroSection },
   { id: "teleprompter", label: "Teleprompter", icon: ScrollText, Component: TeleprompterSection },
+  { id: "clipboard", label: "Clipboard & OCR", icon: ClipboardList, Component: ClipboardSection },
   { id: "about", label: "Tentang", icon: Info, Component: AboutSection },
 ];

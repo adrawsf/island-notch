@@ -1,5 +1,6 @@
 import { NotchShell } from "./NotchShell";
 import { useShellSync } from "./useShellSync";
+import { useOcrToasts } from "../features/clipboard/useOcrToasts";
 import { TooltipLayer } from "../shared/ui/TooltipLayer";
 import { startAmbienceController } from "../features/pomodoro/ambience/ambience";
 import { startChimeController } from "../features/home/chime";
@@ -11,6 +12,7 @@ startChimeController();
 
 export function App() {
   useShellSync();
+  useOcrToasts();
   return (
     <>
       <NotchShell />

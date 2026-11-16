@@ -55,15 +55,11 @@ pub fn media_volume_set(app_id: String, volume: Option<f32>, muted: Option<bool>
 #[cfg(windows)]
 mod win {
     use windows::core::Interface;
-    use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::Media::Audio::{
         eConsole, eRender, AudioSessionStateActive, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator,
         ISimpleAudioVolume, MMDeviceEnumerator,
     };
     use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED};
-    use windows::Win32::System::Threading::{
-        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
-    };
 
     struct Candidate {
         volume: ISimpleAudioVolume,
@@ -126,31 +122,9 @@ mod win {
             }
             let Ok(volume) = control.cast::<ISimpleAudioVolume>() else { continue };
             let active = control.GetState().map(|s| s == AudioSessionStateActive).unwrap_or(false);
-            out.push(Candidate { volume, exe: exe_stem(pid), active });
+            out.push(Candidate { volume, exe: crate::process::exe_stem(pid), active });
         }
         Ok(out)
-    }
-
-    fn exe_stem(pid: u32) -> String {
-        unsafe {
-            let Ok(process) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else { return String::new() };
-            let mut buf = [0u16; 260];
-            let mut len = buf.len() as u32;
-            let ok = QueryFullProcessImageNameW(
-                process,
-                PROCESS_NAME_WIN32,
-                windows::core::PWSTR(buf.as_mut_ptr()),
-                &mut len,
-            )
-            .is_ok();
-            let _ = CloseHandle(process);
-            if !ok {
-                return String::new();
-            }
-            let path = String::from_utf16_lossy(&buf[..len as usize]).to_lowercase();
-            let file = path.rsplit(['\\', '/']).next().unwrap_or("");
-            file.strip_suffix(".exe").unwrap_or(file).to_string()
-        }
     }
 }
 

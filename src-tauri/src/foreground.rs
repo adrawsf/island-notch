@@ -9,7 +9,7 @@
 //!   taking focus) when the app leaves full screen. Opening the notch with the
 //!   shortcut or the tray during full screen keeps it shown until then.
 
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicIsize, AtomicU8, Ordering};
 use tauri::{AppHandle, Emitter, Manager};
 
 pub const EVENT_COMPACT: &str = "notch://compact";
@@ -21,6 +21,18 @@ const FS_HIDDEN: u8 = 1;
 /// The user brought it back during full screen; leave it alone until it ends.
 const FS_USER: u8 = 2;
 static FULLSCREEN_STATE: AtomicU8 = AtomicU8::new(FS_NONE);
+
+/// Last foreground window of another app (HWND as isize, 0 = none yet).
+static LAST_EXTERNAL: AtomicIsize = AtomicIsize::new(0);
+
+/// The window the user was in before switching to one of ours (the notch):
+/// where a clipboard item gets pasted.
+pub fn last_external_window() -> Option<isize> {
+    match LAST_EXTERNAL.load(Ordering::SeqCst) {
+        0 => None,
+        hwnd => Some(hwnd),
+    }
+}
 
 /// The user asked for the notch (shortcut, tray) while it was hidden for a
 /// full screen app: keep it shown for the rest of that full screen session.
@@ -60,6 +72,9 @@ pub fn start(app: AppHandle) {
         let mut last = false;
         loop {
             std::thread::sleep(POLL);
+            if let Some(hwnd) = win::external_foreground(own_pid) {
+                LAST_EXTERNAL.store(hwnd, Ordering::SeqCst);
+            }
             let Some(notch) = crate::window::main_window(&app) else { continue };
             // `None`: our own window is in front (the user is using the notch,
             // mini player or teleprompter); keep the current state.
@@ -169,6 +184,19 @@ mod win {
             let browser_under_notch = touches_top && under_notch && is_browser(pid);
 
             Some(Foreground { browser_under_notch, fullscreen })
+        }
+    }
+
+    /// The foreground window if it belongs to another process.
+    pub fn external_foreground(own_pid: u32) -> Option<isize> {
+        unsafe {
+            let fg = GetForegroundWindow();
+            if fg.0.is_null() {
+                return None;
+            }
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(fg, Some(&mut pid));
+            (pid != 0 && pid != own_pid).then_some(fg.0 as isize)
         }
     }
 

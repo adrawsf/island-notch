@@ -30,6 +30,7 @@ src/
   features/<fitur>/    Satu folder per fitur: panel, hook, service
   miniplayer/          Entry window mini player (miniplayer.html)
   teleprompter/        Entry window teleprompter (teleprompter.html)
+  snip/                Entry overlay OCR (snip.html): seret kotak di atas teks
   settings/            Entry window pengaturan (settings.html): halaman per kategori di sections.tsx
   shared/              Utilitas kecil (format waktu, hook umum)
 src-tauri/src/
@@ -40,12 +41,16 @@ src-tauri/src/
   shell.rs             Menerapkan config shell dari frontend (apply_shell_config)
   settings_window.rs   Window pengaturan + daftar monitor dan autostart untuk frontend
   tray.rs              Ikon dan menu tray (klik kiri buka/tutup notch, klik kanan menu singkat)
-  shortcut.rs          Shortcut global buka/tutup notch
+  shortcut.rs          Shortcut global: buka/tutup notch dan OCR
   media.rs             Now playing via SMTC (polling, artwork, kontrol, seek)
   volume.rs            Volume app yang sedang memutar (Core Audio, seperti slider di Volume Mixer)
   lyrics.rs            HTTP penyedia lirik (allowlist endpoint; pencocokan dan parsing di TS)
   teleprompter.rs      Window teleprompter (tembus klik kecuali toolbar, bisa disembunyikan dari rekaman/screen share)
   miniplayer.rs        Window mini player (dibuat sekali, disembunyikan saat ditutup)
+  clipboard.rs         Riwayat clipboard (teks + gambar, disimpan di app data/clipboard), salin balik + paste ke app sebelumnya
+  ocr.rs               Overlay potong layar + Windows OCR (Windows.Media.Ocr), hasilnya disalin
+  imaging.rs           Encode/decode PNG lewat Windows imaging (tanpa crate tambahan)
+  process.rs           Nama exe dari PID
 ```
 
 ## Konvensi
@@ -69,5 +74,5 @@ src-tauri/src/
 2. **Shell lanjutan** ✅: pilih monitor, ukuran dan bentuk (notch/island), tema, widget idle, notifikasi notch (antrean toast), tray, autostart, shortcut global (default `Ctrl+Alt+N`, bisa direkam ulang).
 3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu; romanisasi Jepang/Korea/Mandarin) ✅, mini player ✅, volume app musik (tab Media, mini player, scroll di pill) ✅.
 4. **Beranda kustom** ✅: kartu jam (ukuran + bunyi tiap jam dengan jam tenang), world clock, gambar/GIF, kucing piksel (juga bisa jadi widget idle). **Produktivitas:** Catatan (teks + checklist, gaya Keep) ✅, Pomodoro + ambience sintesis (hujan, ombak, api, angin, noise) ✅, Teleprompter (di notch atau window tembus pandang/tembus klik) ✅, Kalender Google.
-5. **Sistem:** Clipboard dan OCR, volume mixer, monitor sistem, Drop Shelf, pusat notifikasi.
+5. **Sistem:** Clipboard (riwayat teks + gambar, pin, cari, klik untuk paste) dan OCR (potong area layar, shortcut `Ctrl+Alt+T`) ✅, volume mixer, monitor sistem, Drop Shelf, pusat notifikasi.
 6. **Window pengaturan** ✅ (glass, sidebar kategori, dibuka dari tombol ⚙ di notch atau tray), updater, dan rilis.

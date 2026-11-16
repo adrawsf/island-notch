@@ -6,14 +6,27 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { AppSettings } from "../settings/settings";
 import { subscribe } from "../tauriEvents";
 
-/** Settings Rust needs: placement, the global shortcut, the video filter, full screen hiding. */
+/**
+ * Settings Rust needs: placement, the global shortcuts, the video filter,
+ * full screen hiding, the clipboard history and OCR.
+ */
 export type ShellConfig = Pick<
   AppSettings,
-  "monitor" | "ignoreVideo" | "shortcutEnabled" | "toggleShortcut" | "hideInFullscreen"
+  | "monitor"
+  | "ignoreVideo"
+  | "shortcutEnabled"
+  | "toggleShortcut"
+  | "hideInFullscreen"
+  | "clipboardHistory"
+  | "clipboardMaxItems"
+  | "ocrShortcutEnabled"
+  | "ocrShortcut"
+  | "ocrLanguage"
 >;
 
 export interface ApplyResult {
   shortcutError: string | null;
+  ocrShortcutError: string | null;
 }
 
 export interface MonitorEntry {

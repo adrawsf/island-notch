@@ -13,6 +13,7 @@ import { prettyShortcut } from "../shared/format";
 export function useShellSync() {
   const s = useSettings();
   const lastError = useRef<string | null>(null);
+  const lastOcrError = useRef<string | null>(null);
 
   useEffect(() => {
     applyShellConfig({
@@ -21,15 +22,36 @@ export function useShellSync() {
       shortcutEnabled: s.shortcutEnabled,
       toggleShortcut: s.toggleShortcut,
       hideInFullscreen: s.hideInFullscreen,
+      clipboardHistory: s.clipboardHistory,
+      clipboardMaxItems: s.clipboardMaxItems,
+      ocrShortcutEnabled: s.ocrShortcutEnabled,
+      ocrShortcut: s.ocrShortcut,
+      ocrLanguage: s.ocrLanguage,
     }).then((result) => {
-      const error = result?.shortcutError ?? null;
       // Rust keeps reporting a failed shortcut; toast only when it changes.
+      const error = result?.shortcutError ?? null;
       if (error && error !== lastError.current) {
         showToast({ title: "Shortcut tidak bisa dipasang", body: error, durationMs: 6000 });
       }
       lastError.current = error;
+      const ocrError = result?.ocrShortcutError ?? null;
+      if (ocrError && ocrError !== lastOcrError.current) {
+        showToast({ title: "Shortcut OCR tidak bisa dipasang", body: ocrError, durationMs: 6000 });
+      }
+      lastOcrError.current = ocrError;
     });
-  }, [s.monitor, s.ignoreVideo, s.shortcutEnabled, s.toggleShortcut, s.hideInFullscreen]);
+  }, [
+    s.monitor,
+    s.ignoreVideo,
+    s.shortcutEnabled,
+    s.toggleShortcut,
+    s.hideInFullscreen,
+    s.clipboardHistory,
+    s.clipboardMaxItems,
+    s.ocrShortcutEnabled,
+    s.ocrShortcut,
+    s.ocrLanguage,
+  ]);
 
   // First run: tell the user where things are.
   useEffect(() => {

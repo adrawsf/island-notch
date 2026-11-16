@@ -3,12 +3,17 @@
 //! Each domain lives in its own module and exposes its commands from there.
 //! `run()` only wires plugins, setup and the command list together.
 
+mod clipboard;
 mod foreground;
 mod hit_test;
+#[cfg(windows)]
+mod imaging;
 mod lyrics;
 mod media;
 mod media_source;
 mod miniplayer;
+mod ocr;
+mod process;
 mod settings_window;
 mod shell;
 mod shortcut;
@@ -28,12 +33,14 @@ pub fn run() {
         .manage(hit_test::HitTestState::default())
         .manage(shell::ShellState::default())
         .manage(media::MediaStore::default())
+        .manage(clipboard::ClipboardStore::default())
         .setup(|app| {
             window::setup_main_window(app.handle())?;
             tray::create(app.handle())?;
             hit_test::start(app.handle().clone());
             foreground::start(app.handle().clone());
             media::start(app.handle().clone());
+            clipboard::start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -63,6 +70,15 @@ pub fn run() {
             teleprompter::teleprompter_visible,
             teleprompter::teleprompter_set_capture_excluded,
             teleprompter::teleprompter_hit_regions,
+            clipboard::clipboard_list,
+            clipboard::clipboard_thumb,
+            clipboard::clipboard_paste,
+            clipboard::clipboard_pin,
+            clipboard::clipboard_delete,
+            clipboard::clipboard_clear,
+            ocr::ocr_snip_start,
+            ocr::ocr_snip_finish,
+            ocr::ocr_languages,
             window::reposition_main_window,
         ])
         .run(tauri::generate_context!())

@@ -75,6 +75,17 @@ export interface AppSettings {
   teleprompterOpacity: number;
   /** The teleprompter window lets clicks through, except on its toolbar. */
   teleprompterClickThrough: boolean;
+  /** Record what is copied (Clipboard tab). */
+  clipboardHistory: boolean;
+  /** History size; pinned items are kept beyond it. */
+  clipboardMaxItems: number;
+  /** Clicking an item also pastes it into the app that was in front. */
+  clipboardAutoPaste: boolean;
+  /** Global shortcut that reads text from a screen area (OCR). */
+  ocrShortcutEnabled: boolean;
+  ocrShortcut: string;
+  /** OCR language tag (e.g. "en-US"), or "auto" for the Windows languages. */
+  ocrLanguage: string;
   /** Home tab cards shown, in order (see src/features/home/homeCards.ts). */
   homeCards: string[];
   /** Size of the big clock on the home tab. */
@@ -159,6 +170,12 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   teleprompterHideFromCapture: { default: true, valid: isBoolean },
   teleprompterOpacity: { default: 0.85, valid: inRange(0.1, 1) },
   teleprompterClickThrough: { default: true, valid: isBoolean },
+  clipboardHistory: { default: true, valid: isBoolean },
+  clipboardMaxItems: { default: 100, valid: inRange(10, 1000) },
+  clipboardAutoPaste: { default: true, valid: isBoolean },
+  ocrShortcutEnabled: { default: true, valid: isBoolean },
+  ocrShortcut: { default: "Control+Alt+T", valid: isNonEmptyString },
+  ocrLanguage: { default: "auto", valid: isNonEmptyString },
   homeCards: { default: ["clock", "worldClocks", "image", "pet"], valid: isIdList },
   clockSize: { default: "medium", valid: oneOf("small", "medium", "large") },
   worldClocks: { default: [], valid: isZoneList },

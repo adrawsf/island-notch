@@ -65,6 +65,7 @@ export default defineConfig({
         miniplayer: resolve(import.meta.dirname, "miniplayer.html"),
         teleprompter: resolve(import.meta.dirname, "teleprompter.html"),
         settings: resolve(import.meta.dirname, "settings.html"),
+        snip: resolve(import.meta.dirname, "snip.html"),
       },
     },
   },
