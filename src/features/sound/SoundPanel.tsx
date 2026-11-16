@@ -73,9 +73,10 @@ export default function SoundPanel(_props: TabPanelProps) {
             </div>
           )}
           <div className="px-2.5 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-notch-muted">Aplikasi</div>
-          <ul className="h-[148px] overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+          {/* Grows with the app list; scrolls only past what fits under the notch's height cap. */}
+          <ul className="max-h-[154px] overflow-y-auto pr-0.5 [scrollbar-width:thin]">
             {mixer.apps.length === 0 ? (
-              <li className="flex h-full items-center justify-center text-xs text-notch-muted">
+              <li className="flex items-center justify-center py-4 text-xs text-notch-muted">
                 Belum ada aplikasi yang memutar suara.
               </li>
             ) : (
@@ -103,7 +104,7 @@ function OutputList({
   onPick: (id: string) => void;
 }) {
   return (
-    <ul className="h-[190px] overflow-y-auto [scrollbar-width:thin]" role="listbox" aria-label="Output suara">
+    <ul className="max-h-[212px] overflow-y-auto [scrollbar-width:thin]" role="listbox" aria-label="Output suara">
       {outputs.map((o) => {
         const selected = o.id === current;
         return (
