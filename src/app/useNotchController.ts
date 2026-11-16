@@ -14,7 +14,7 @@ import { hideTooltip } from "../shared/ui/TooltipLayer";
 
 const HOVER_OPEN_DELAY_MS = 120;
 /** Over the media pill the notch waits a little longer, so the wheel can reach the volume first. */
-const MEDIA_HOVER_OPEN_DELAY_MS = 350;
+const WHEEL_HOVER_OPEN_DELAY_MS = 350;
 
 /** A text field inside the notch has focus: leaving with the cursor must not close it. */
 function isEditing(): boolean {
@@ -24,8 +24,8 @@ function isEditing(): boolean {
 interface NotchControllerOptions {
   /** Hovering does not open the notch (e.g. a toast is showing and should be clickable). */
   suppressHoverOpen?: boolean;
-  /** The collapsed pill shows media: open on hover a bit later (wheel = volume). */
-  mediaPill?: boolean;
+  /** The collapsed pill takes the wheel (volume): open on hover a bit later. */
+  wheelPill?: boolean;
   /**
    * Stay open: leaving with the cursor, clicking outside and Escape do not
    * close it (the teleprompter runs in the notch). The shortcut still does.
@@ -39,7 +39,7 @@ interface NotchControllerOptions {
  */
 export function useNotchController({
   suppressHoverOpen = false,
-  mediaPill = false,
+  wheelPill = false,
   holdOpen = false,
 }: NotchControllerOptions = {}) {
   const settings = useSettings();
@@ -52,8 +52,8 @@ export function useNotchController({
   settingsRef.current = settings;
   const suppressHoverOpenRef = useRef(suppressHoverOpen);
   suppressHoverOpenRef.current = suppressHoverOpen;
-  const mediaPillRef = useRef(mediaPill);
-  mediaPillRef.current = mediaPill;
+  const wheelPillRef = useRef(wheelPill);
+  wheelPillRef.current = wheelPill;
   const holdOpenRef = useRef(holdOpen);
   holdOpenRef.current = holdOpen;
   /** The wheel was used on the pill: no hover-open until the cursor leaves. */
@@ -100,7 +100,7 @@ export function useNotchController({
       if (!inside) heldRef.current = false;
       if (inside) {
         if (expandOnHover && !suppressHoverOpenRef.current && !heldRef.current) {
-          const delay = mediaPillRef.current && !expandedRef.current ? MEDIA_HOVER_OPEN_DELAY_MS : HOVER_OPEN_DELAY_MS;
+          const delay = wheelPillRef.current && !expandedRef.current ? WHEEL_HOVER_OPEN_DELAY_MS : HOVER_OPEN_DELAY_MS;
           timer.current = setTimeout(() => setOpen(true), delay);
         }
       } else if (!isEditing() && !holdOpenRef.current) {

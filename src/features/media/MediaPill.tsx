@@ -8,6 +8,7 @@ import type { MediaState } from "./mediaBridge";
 import { Artwork } from "./Artwork";
 import { stepAppVolume, useAppVolume, VOLUME_STEP } from "./volume";
 import { volumeIcon } from "./VolumeControl";
+import { stepMaster, type Level } from "../sound/mixerBridge";
 
 /** How long the volume level stays in the pill after the last wheel step. */
 const VOLUME_FLASH_MS = 1200;
@@ -28,6 +29,8 @@ export function MediaPill({ media, showLyrics, onClick, onWheelVolume }: MediaPi
   const showingLyrics = synced !== null && media.isPlaying;
   const volume = useAppVolume(media);
   const [flash, setFlash] = useState(false);
+  // No audio session found for the player: the wheel changes the master volume.
+  const [master, setMasterLevel] = useState<Level | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -39,9 +42,11 @@ export function MediaPill({ media, showLyrics, onClick, onWheelVolume }: MediaPi
 
   // Wheel over the pill: volume up/down, the level shows for a moment.
   const onWheel = (e: WheelEvent) => {
-    if (e.deltaY === 0 || !volume) return;
+    if (e.deltaY === 0) return;
     onWheelVolume?.();
-    stepAppVolume(e.deltaY < 0 ? VOLUME_STEP : -VOLUME_STEP);
+    const delta = e.deltaY < 0 ? VOLUME_STEP : -VOLUME_STEP;
+    if (volume) stepAppVolume(delta);
+    else stepMaster(delta).then((level) => level && setMasterLevel(level));
     setFlash(true);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setFlash(false), VOLUME_FLASH_MS);
@@ -59,8 +64,8 @@ export function MediaPill({ media, showLyrics, onClick, onWheelVolume }: MediaPi
     >
       <Artwork src={media.artwork} className="h-[22px] w-[22px] shrink-0 rounded-full" iconSize={12} />
       <span className="relative min-w-0 flex-1 overflow-hidden text-[12px] font-semibold">
-        {flash && volume ? (
-          <VolumeLine volume={volume.volume} muted={volume.muted} />
+        {flash && (volume ?? master) ? (
+          <VolumeLine volume={(volume ?? master)!.volume} muted={(volume ?? master)!.muted} />
         ) : showingLyrics ? (
           <LyricLine media={media} lyrics={synced} />
         ) : (
@@ -72,7 +77,7 @@ export function MediaPill({ media, showLyrics, onClick, onWheelVolume }: MediaPi
 }
 
 /** The volume level in place of the title while the wheel is in use. */
-function VolumeLine({ volume, muted }: { volume: number; muted: boolean }) {
+export function VolumeLine({ volume, muted }: { volume: number; muted: boolean }) {
   const Icon = volumeIcon(volume, muted);
   const percent = muted ? 0 : Math.round(volume * 100);
   return (

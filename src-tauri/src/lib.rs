@@ -12,6 +12,7 @@ mod lyrics;
 mod media;
 mod media_source;
 mod miniplayer;
+mod mixer;
 mod ocr;
 mod process;
 mod settings_window;
@@ -76,6 +77,14 @@ pub fn run() {
             clipboard::clipboard_pin,
             clipboard::clipboard_delete,
             clipboard::clipboard_clear,
+            mixer::mixer_state,
+            mixer::mixer_set_master,
+            mixer::mixer_step_master,
+            mixer::mixer_set_app,
+            mixer::mixer_set_output,
+            mixer::mixer_set_mic_muted,
+            mixer::mixer_mic_muted,
+            mixer::mixer_app_icon,
             ocr::ocr_snip_start,
             ocr::ocr_snip_finish,
             ocr::ocr_languages,

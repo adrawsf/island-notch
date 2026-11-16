@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { MicOff } from "lucide-react";
 import { isTauri } from "@tauri-apps/api/core";
 import { reportHitRegion } from "../core/notch/notchBridge";
 import type { NotchSize } from "../core/settings/settings";
@@ -12,6 +13,7 @@ import { useMiniPlayerVisible } from "../features/media/miniPlayerBridge";
 import { PomodoroPill } from "../features/pomodoro/PomodoroPill";
 import { usePomodoro } from "../features/pomodoro/pomodoroStore";
 import { setPrompterInNotch, usePrompterInNotch } from "../features/teleprompter/notchPrompter";
+import { useMicMuted } from "../features/sound/mixerBridge";
 import { DEFAULT_TAB_WIDTH, preloadPanels } from "./tabs/registry";
 import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
@@ -65,9 +67,11 @@ export function NotchShell() {
         ? "media"
         : "widget";
   const prompterInNotch = usePrompterInNotch();
+  // A muted microphone shows at the end of the pill.
+  const micBadge = useMicMuted() === true && idle !== "handle";
   const notch = useNotchController({
     suppressHoverOpen: toast !== null,
-    mediaPill: idle === "media",
+    wheelPill: idle === "media" || idle === "widget",
     holdOpen: prompterInNotch,
   });
   // Closing the notch (shortcut, tray) or switching tabs ends a teleprompter run in it.
@@ -80,7 +84,12 @@ export function NotchShell() {
 
   // Toasts wait while the notch is expanded.
   const view: View = notch.expanded ? "expanded" : toast ? "toast" : "collapsed";
-  const sizeKey = view === "expanded" ? `tab:${notch.activeTab.id}` : view === "toast" ? "toast" : `idle:${idle}`;
+  const sizeKey =
+    view === "expanded"
+      ? `tab:${notch.activeTab.id}`
+      : view === "toast"
+        ? "toast"
+        : `idle:${idle}${micBadge ? ":mic" : ""}`;
 
   // Natural size of each view's content, reported by <Measure>.
   const [sizes, setSizes] = useState<Record<string, TabSize>>({});
@@ -196,17 +205,30 @@ export function NotchShell() {
               )}
               {view === "collapsed" && (
                 <Measure id={sizeKey} onSize={onSize}>
-                  {idle === "pomodoro" && <PomodoroPill pomo={pomo} onClick={notch.open} />}
-                  {idle === "media" && (
-                    <MediaPill
-                      media={media}
-                      showLyrics={settings.pillShowsLyrics && !peekTrack}
-                      onClick={notch.open}
-                      onWheelVolume={notch.holdCollapsed}
-                    />
-                  )}
-                  {idle === "widget" && <CollapsedPill widgets={settings.idleWidgets} onClick={notch.open} />}
-                  {idle === "handle" && <div className="h-1.5 w-10" aria-label="Notch (diperkecil)" />}
+                  <div className="flex items-center">
+                    {idle === "pomodoro" && <PomodoroPill pomo={pomo} onClick={notch.open} />}
+                    {idle === "media" && (
+                      <MediaPill
+                        media={media}
+                        showLyrics={settings.pillShowsLyrics && !peekTrack}
+                        onClick={notch.open}
+                        onWheelVolume={notch.holdCollapsed}
+                      />
+                    )}
+                    {idle === "widget" && (
+                      <CollapsedPill widgets={settings.idleWidgets} onClick={notch.open} onWheelVolume={notch.holdCollapsed} />
+                    )}
+                    {idle === "handle" && <div className="h-1.5 w-10" aria-label="Notch (diperkecil)" />}
+                    {micBadge && (
+                      <span
+                        className="-ml-1.5 mr-3 flex h-8 shrink-0 items-center text-red-400"
+                        aria-label="Mikrofon dibisukan"
+                        data-tip="Mikrofon dibisukan"
+                      >
+                        <MicOff size={13} />
+                      </span>
+                    )}
+                  </div>
                 </Measure>
               )}
             </motion.div>
