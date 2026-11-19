@@ -14,6 +14,11 @@ export type NotchSize = "compact" | "default" | "large";
 export type ThemeMode = "dark" | "light" | "auto";
 export type ClockSize = "small" | "medium" | "large";
 export type PetColor = "orange" | "gray" | "black" | "cream";
+/** An app muted in the notification center: its App User Model ID and name. */
+export interface MutedApp {
+  id: string;
+  name: string;
+}
 
 export interface AppSettings {
   /** Hovering the collapsed notch expands it. */
@@ -90,6 +95,12 @@ export interface AppSettings {
   systemAlerts: boolean;
   /** Battery percent that triggers the low-battery toast. */
   batteryLowPercent: number;
+  /** Read the Windows notifications into the notification center. */
+  windowsNotifications: boolean;
+  /** New Windows notifications appear as a toast in the notch. */
+  notificationToasts: boolean;
+  /** Apps whose notifications never pop up in the notch (still listed). */
+  notificationMutedApps: MutedApp[];
   /** Home tab cards shown, in order (see src/features/home/homeCards.ts). */
   homeCards: string[];
   /** Size of the big clock on the home tab. */
@@ -125,6 +136,13 @@ const isIdList: Validator<string[]> = (v): v is string[] =>
   v.length <= 8 &&
   v.every((x) => typeof x === "string" && x.length > 0 && x.length <= 40) &&
   new Set(v).size === v.length;
+const isMutedAppList: Validator<MutedApp[]> = (v): v is MutedApp[] =>
+  Array.isArray(v) &&
+  v.length <= 200 &&
+  v.every(
+    (x) =>
+      typeof x === "object" && x !== null && typeof (x as MutedApp).id === "string" && typeof (x as MutedApp).name === "string",
+  );
 const isHour: Validator<number> = (v): v is number => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 23;
 /** Up to 4 distinct IANA zone names (unknown zones are skipped when rendering). */
 const isZoneList: Validator<string[]> = (v): v is string[] =>
@@ -182,6 +200,9 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   ocrLanguage: { default: "auto", valid: isNonEmptyString },
   systemAlerts: { default: true, valid: isBoolean },
   batteryLowPercent: { default: 20, valid: inRange(5, 50) },
+  windowsNotifications: { default: true, valid: isBoolean },
+  notificationToasts: { default: true, valid: isBoolean },
+  notificationMutedApps: { default: [], valid: isMutedAppList },
   homeCards: { default: ["clock", "worldClocks", "image", "pet"], valid: isIdList },
   clockSize: { default: "medium", valid: oneOf("small", "medium", "large") },
   worldClocks: { default: [], valid: isZoneList },

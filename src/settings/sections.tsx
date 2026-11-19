@@ -7,6 +7,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   Activity,
+  Bell,
   ClipboardList,
   House,
   Info,
@@ -32,6 +33,7 @@ import { LYRICS_SOURCE_OPTIONS } from "../features/lyrics/sources";
 import { toggleMiniPlayer, useMiniPlayerVisible } from "../features/media/miniPlayerBridge";
 import { AMBIENCE_SOUNDS } from "../features/pomodoro/ambience/sounds";
 import { listOcrLanguages, type OcrLanguage } from "../features/clipboard/clipboardBridge";
+import { openNotificationSettings } from "../features/notifications/notifBridge";
 import { prettyShortcut } from "../shared/format";
 import { Stepper } from "../shared/ui/Stepper";
 import { Group, ReorderableToggles, Row, Segmented, Select, Slider, TextButton, Toggle } from "./controls";
@@ -501,6 +503,58 @@ function ClipboardSection({ setCapturingKeys }: SectionProps) {
   );
 }
 
+// ---------- Notifikasi ----------
+
+function NotificationsSection() {
+  const s = useSettings();
+  return (
+    <>
+      <Group title="Notifikasi Windows">
+        <Row
+          title="Baca notifikasi Windows"
+          hint="Notifikasi dari aplikasi lain (chat, email, dll.) masuk ke tab Notifikasi. Windows mungkin meminta izin sekali."
+          below={
+            <button type="button" className="self-start text-xs text-notch-accent hover:underline" onClick={openNotificationSettings}>
+              Buka izin notifikasi di Windows
+            </button>
+          }
+        >
+          <Toggle checked={s.windowsNotifications} onChange={(v) => set("windowsNotifications", v)} label="Baca notifikasi Windows" />
+        </Row>
+        <Row
+          title="Munculkan di notch"
+          hint="Notifikasi baru tampil sebentar di notch dengan ikon aplikasinya. Klik untuk membuka aplikasinya."
+          disabled={!s.windowsNotifications}
+        >
+          <Toggle checked={s.notificationToasts} onChange={(v) => set("notificationToasts", v)} label="Munculkan di notch" />
+        </Row>
+      </Group>
+      <Group title="Aplikasi yang dibisukan">
+        {s.notificationMutedApps.length === 0 ? (
+          <div className="px-4 py-3 text-xs text-notch-muted">
+            Belum ada. Bisukan aplikasi dari tab Notifikasi dengan tombol lonceng di grupnya.
+          </div>
+        ) : (
+          s.notificationMutedApps.map((app) => (
+            <Row key={app.id} title={app.name} hint="Tetap tercatat di tab Notifikasi, tapi tidak muncul di notch.">
+              <TextButton
+                onClick={() =>
+                  set(
+                    "notificationMutedApps",
+                    s.notificationMutedApps.filter((m) => m.id !== app.id),
+                  )
+                }
+              >
+                Bunyikan lagi
+              </TextButton>
+            </Row>
+          ))
+        )}
+      </Group>
+    </>
+  );
+}
+
 // ---------- Sistem ----------
 
 function SystemSection() {
@@ -584,6 +638,7 @@ export const SECTIONS: SectionDefinition[] = [
   { id: "pomodoro", label: "Pomodoro", icon: Timer, Component: PomodoroSection },
   { id: "teleprompter", label: "Teleprompter", icon: ScrollText, Component: TeleprompterSection },
   { id: "clipboard", label: "Clipboard & OCR", icon: ClipboardList, Component: ClipboardSection },
+  { id: "notifications", label: "Notifikasi", icon: Bell, Component: NotificationsSection },
   { id: "system", label: "Sistem", icon: Activity, Component: SystemSection },
   { id: "about", label: "Tentang", icon: Info, Component: AboutSection },
 ];

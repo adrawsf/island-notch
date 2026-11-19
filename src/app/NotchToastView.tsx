@@ -6,18 +6,25 @@ interface NotchToastViewProps {
   onDismiss: () => void;
 }
 
-/** A toast inside the collapsed notch. Clicking dismisses it. */
+/** A toast inside the collapsed notch. Clicking runs its action (if any) and dismisses it. */
 export function NotchToastView({ toast, onDismiss }: NotchToastViewProps) {
   return (
     <button
       type="button"
-      onClick={onDismiss}
+      onClick={() => {
+        toast.onClick?.();
+        onDismiss();
+      }}
       className="flex min-w-[240px] max-w-[360px] items-center gap-3 py-2.5 pl-2.5 pr-5 text-left"
-      aria-label={`Tutup notifikasi: ${toast.title}`}
+      aria-label={toast.onClick ? `Buka: ${toast.title}` : `Tutup notifikasi: ${toast.title}`}
     >
-      <span className="glass-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-notch-accent">
-        <Bell size={15} strokeWidth={2.2} />
-      </span>
+      {toast.icon ? (
+        <img src={toast.icon} alt="" className="h-9 w-9 shrink-0 rounded-xl object-contain" draggable={false} />
+      ) : (
+        <span className="glass-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-notch-accent">
+          <Bell size={15} strokeWidth={2.2} />
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-semibold leading-tight">{toast.title}</span>
         {toast.body && <span className="block truncate text-xs leading-tight text-notch-muted">{toast.body}</span>}

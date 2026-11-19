@@ -27,6 +27,7 @@ ureq = { version = "2.12", features = ["json"] }
 # The `#[implement]` macro expands to paths in windows-core.
 windows-core = "0.58.0"
 windows = { version = "0.58.0", features = [
+  "ApplicationModel",
   "Foundation",
   "Foundation_Collections",
   "Globalization",
@@ -36,6 +37,9 @@ windows = { version = "0.58.0", features = [
   "Media_Ocr",
   "Media_Control",
   "Storage_Streams",
+  "UI",
+  "UI_Notifications",
+  "UI_Notifications_Management",
   "Win32_Devices_FunctionDiscovery",
   "Win32_Foundation",
   "Win32_Graphics_Dxgi",

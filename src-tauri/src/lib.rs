@@ -13,6 +13,7 @@ mod media;
 mod media_source;
 mod miniplayer;
 mod mixer;
+mod notifications;
 mod ocr;
 mod process;
 mod settings_window;
@@ -90,6 +91,12 @@ pub fn run() {
             mixer::mixer_set_mic_muted,
             mixer::mixer_mic_muted,
             mixer::mixer_app_icon,
+            notifications::notif_configure,
+            notifications::notif_list,
+            notifications::notif_remove,
+            notifications::notif_open_app,
+            notifications::notif_open_settings,
+            notifications::notif_icon,
             shelf::shelf_list,
             shelf::shelf_remove,
             shelf::shelf_clear,

@@ -12,13 +12,15 @@ export interface NotchToast {
   title: string;
   body?: string;
   durationMs: number;
+  /** Image (data URI) shown instead of the bell, e.g. the sending app's logo. */
+  icon?: string;
+  /** Clicking the toast runs this (it is dismissed either way). */
+  onClick?: () => void;
+  /** Where it came from: "windows" toasts are already in the notification center. */
+  source?: "notch" | "windows";
 }
 
-export interface ToastInput {
-  title: string;
-  body?: string;
-  durationMs?: number;
-}
+export type ToastInput = Omit<NotchToast, "id" | "durationMs"> & { durationMs?: number };
 
 const DEFAULT_DURATION_MS = 3500;
 /** Oldest toasts are dropped beyond this, so a burst can't stall the notch. */
@@ -27,16 +29,24 @@ const MAX_QUEUE = 5;
 let queue: NotchToast[] = [];
 let nextId = 1;
 const listeners = new Set<() => void>();
+const addedListeners = new Set<(toast: NotchToast) => void>();
 
 function emit() {
   listeners.forEach((l) => l());
 }
 
-export function showToast({ title, body, durationMs = DEFAULT_DURATION_MS }: ToastInput): number {
-  const toast: NotchToast = { id: nextId++, title, body, durationMs };
+export function showToast({ durationMs = DEFAULT_DURATION_MS, source = "notch", ...rest }: ToastInput): number {
+  const toast: NotchToast = { id: nextId++, durationMs, source, ...rest };
   queue = [...queue, toast].slice(-MAX_QUEUE);
   emit();
+  addedListeners.forEach((l) => l(toast));
   return toast.id;
+}
+
+/** Every toast as it is queued (the notification center keeps a history). */
+export function onToastAdded(listener: (toast: NotchToast) => void): () => void {
+  addedListeners.add(listener);
+  return () => addedListeners.delete(listener);
 }
 
 export function dismissToast(id: number): void {
