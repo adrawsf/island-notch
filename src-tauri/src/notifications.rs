@@ -17,6 +17,15 @@ pub const EVENT_NEW: &str = "notif://new";
 pub const EVENT_CHANGED: &str = "notif://changed";
 
 const POLL: std::time::Duration = std::time::Duration::from_secs(2);
+/// A notification older than this is never announced as new (ms).
+const FRESH_MS: i64 = 60_000;
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -111,6 +120,34 @@ pub fn notif_open_settings() -> Result<(), String> {
     Err("not supported".into())
 }
 
+/// Whether Windows' "Do not disturb" is on (also on during a Focus session).
+/// Windows 11 then sets `NOC_GLOBAL_SETTING_TOASTS_ENABLED` to 0.
+#[tauri::command]
+pub fn notif_dnd_active() -> bool {
+    #[cfg(windows)]
+    {
+        use windows::core::w;
+        use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+        let mut value = 1u32;
+        let mut size = std::mem::size_of::<u32>() as u32;
+        let found = unsafe {
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                w!("Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings"),
+                w!("NOC_GLOBAL_SETTING_TOASTS_ENABLED"),
+                RRF_RT_REG_DWORD,
+                None,
+                Some((&mut value as *mut u32).cast()),
+                Some(&mut size),
+            )
+        }
+        .is_ok();
+        found && value == 0
+    }
+    #[cfg(not(windows))]
+    false
+}
+
 /// The app's logo (PNG data URI), once a notification from it has been seen.
 #[tauri::command]
 pub fn notif_icon(app_id: String) -> Option<String> {
@@ -119,7 +156,7 @@ pub fn notif_icon(app_id: String) -> Option<String> {
 
 #[cfg(windows)]
 mod win {
-    use super::{Notif, NotifList, ENABLED, EVENT_CHANGED, EVENT_NEW, ICONS, POLL, STATE};
+    use super::{Notif, NotifList, ENABLED, EVENT_CHANGED, EVENT_NEW, FRESH_MS, ICONS, POLL, STATE};
     use std::collections::{HashMap, HashSet};
     use std::sync::atomic::Ordering;
     use tauri::{AppHandle, Emitter};
@@ -150,17 +187,41 @@ mod win {
     fn logo(n: &UserNotification) -> Option<String> {
         use base64::Engine as _;
         let info = n.AppInfo().ok()?.DisplayInfo().ok()?;
-        let stream = info.GetLogo(Size { Width: 64.0, Height: 64.0 }).ok()?.OpenReadAsync().ok()?.get().ok()?;
+        let open = info.GetLogo(Size { Width: 64.0, Height: 64.0 }).ok()?.OpenReadAsync().ok()?;
+        let stream = finished(&open).then(|| open.GetResults().ok()).flatten()?;
         let size = stream.Size().ok()? as u32;
         if size == 0 || size > 4 * 1024 * 1024 {
             return None;
         }
         let reader = DataReader::CreateDataReader(&stream).ok()?;
-        reader.LoadAsync(size).ok()?.get().ok()?;
+        if !finished(&reader.LoadAsync(size).ok()?) {
+            return None;
+        }
         let mut bytes = vec![0u8; size as usize];
         reader.ReadBytes(&mut bytes).ok()?;
         let mime = if bytes.starts_with(b"\x89PNG") { "image/png" } else { "image/jpeg" };
         Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+    }
+
+    /// Waits up to 2 s for a WinRT async operation by polling its status.
+    /// `.get()` never returns for some of them on this thread (opening an
+    /// app's logo stream), which used to stall the whole poll.
+    fn finished<T: windows::core::Interface>(op: &T) -> bool {
+        use windows::Foundation::{AsyncStatus, IAsyncInfo};
+        let Ok(info) = op.cast::<IAsyncInfo>() else { return false };
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        loop {
+            match info.Status() {
+                Ok(AsyncStatus::Completed) => return true,
+                Ok(AsyncStatus::Started) if std::time::Instant::now() < deadline => {
+                    std::thread::sleep(std::time::Duration::from_millis(10))
+                }
+                _ => {
+                    let _ = info.Cancel();
+                    return false;
+                }
+            }
+        }
     }
 
     fn convert(n: &UserNotification) -> Option<Notif> {
@@ -194,7 +255,9 @@ mod win {
         if status == UserNotificationListenerAccessStatus::Unspecified {
             status = listener
                 .RequestAccessAsync()
-                .and_then(|op| op.get())
+                .ok()
+                .filter(finished)
+                .and_then(|op| op.GetResults().ok())
                 .unwrap_or(UserNotificationListenerAccessStatus::Unspecified);
         }
         match status {
@@ -239,20 +302,29 @@ mod win {
                 continue;
             }
             let status = access(&listener);
-            let items: Vec<Notif> = if status == "allowed" {
+            let read: Option<Vec<Notif>> = if status == "allowed" {
                 listener
                     .GetNotificationsAsync(NotificationKinds::Toast)
-                    .and_then(|op| op.get())
+                    .ok()
+                    .filter(finished)
+                    .and_then(|op| op.GetResults().ok())
                     .map(|list| list.into_iter().filter_map(|n| convert(&n)).collect())
-                    .unwrap_or_default()
             } else {
-                Vec::new()
+                Some(Vec::new())
             };
-            let mut items = items;
+            // A failed or slow read is not "everything was dismissed": trying
+            // again next time keeps old notifications from coming back as new.
+            let Some(mut items) = read else {
+                std::thread::sleep(POLL);
+                continue;
+            };
             items.sort_by(|a, b| b.time.cmp(&a.time));
 
             if let Some(seen) = &seen {
-                let mut fresh: Vec<Notif> = items.iter().filter(|n| !seen.contains(&n.id)).cloned().collect();
+                // Only what just arrived pops up, never older ones seen for the first time.
+                let recent = super::now_ms() - FRESH_MS;
+                let mut fresh: Vec<Notif> =
+                    items.iter().filter(|n| !seen.contains(&n.id) && n.time >= recent).cloned().collect();
                 if !fresh.is_empty() {
                     fresh.reverse();
                     let _ = app.emit(EVENT_NEW, fresh);
