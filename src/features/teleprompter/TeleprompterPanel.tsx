@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppWindow, EyeOff, Play, Plus, Trash2 } from "lucide-react";
 import type { TabPanelProps } from "../../app/tabs/types";
 import { updateSetting } from "../../core/settings/settings";
@@ -7,7 +7,6 @@ import { openTeleprompter, setCaptureExcluded, useTeleprompterVisible } from "./
 import { setPrompterInNotch, usePrompterInNotch } from "./notchPrompter";
 import { PrompterView } from "./PrompterView";
 import {
-  activeScript,
   createScript,
   deleteScript,
   selectScript,
@@ -31,13 +30,69 @@ function ScriptEditor(_props: TabPanelProps) {
   const data = teleprompterData.use();
   const settings = useSettings();
   const visible = useTeleprompterVisible();
-  const script = activeScript(data);
+  // No script is shown until one is clicked in the list (each time the notch opens).
+  const [openId, setOpenId] = useState<string | null>(null);
+  const script = openId ? (data.scripts.find((s) => s.id === openId) ?? null) : null;
   const canStart = !!script && !!script.body.trim();
+
+  const open = (id: string) => {
+    selectScript(id);
+    setOpenId(id);
+  };
 
   // Apply the capture setting to an already open teleprompter right away.
   useEffect(() => {
     if (visible) setCaptureExcluded(settings.teleprompterHideFromCapture);
   }, [visible, settings.teleprompterHideFromCapture]);
+
+  // Nothing open yet: the list takes the whole panel.
+  if (!script) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex h-8 items-center gap-2 px-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-notch-muted">
+            {data.scripts.length === 0 ? "Naskah" : `${data.scripts.length} naskah`}
+          </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setOpenId(createScript())}
+            className="glass-button flex h-8 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold"
+          >
+            <Plus size={14} /> Naskah baru
+          </button>
+        </div>
+        {data.scripts.length === 0 ? (
+          <div className="glass-well flex h-[134px] items-center justify-center rounded-2xl text-sm text-notch-muted">
+            Belum ada naskah. Buat satu untuk mulai.
+          </div>
+        ) : (
+          <ul className="flex max-h-[200px] flex-col gap-0.5 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+            {data.scripts.map((s) => {
+              const preview = s.body.trim().replace(/\s+/g, " ");
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => open(s.id)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-notch-fg/[0.07]"
+                  >
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[13px] font-semibold">{s.title || "Tanpa judul"}</span>
+                      <span className="truncate text-[11.5px] text-notch-muted">{preview || "Masih kosong"}</span>
+                    </span>
+                    <span className="shrink-0 text-[11px] tabular-nums text-notch-muted">
+                      {preview ? `${preview.split(" ").length} kata` : ""}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-4">
@@ -45,7 +100,7 @@ function ScriptEditor(_props: TabPanelProps) {
       <div className="flex w-36 shrink-0 flex-col gap-1.5">
         <button
           type="button"
-          onClick={createScript}
+          onClick={() => setOpenId(createScript())}
           className="glass-button flex h-8 items-center justify-center gap-1.5 rounded-full text-xs font-semibold"
         >
           <Plus size={14} /> Naskah baru
@@ -56,7 +111,8 @@ function ScriptEditor(_props: TabPanelProps) {
             <li key={s.id}>
               <button
                 type="button"
-                onClick={() => selectScript(s.id)}
+                // Clicking the open script again goes back to the full list.
+                onClick={() => (s.id === openId ? setOpenId(null) : open(s.id))}
                 className={`w-full truncate rounded-lg px-2 py-1 text-left text-xs ${
                   s.id === script?.id ? "bg-notch-fg/15 font-semibold" : "text-notch-muted hover:bg-notch-fg/5 hover:text-notch-fg"
                 }`}
@@ -73,7 +129,7 @@ function ScriptEditor(_props: TabPanelProps) {
             disabled={!canStart}
             onClick={() => setPrompterInNotch(true)}
             className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-notch-accent px-2 text-xs font-semibold text-white transition-[opacity,transform] hover:opacity-90 active:scale-95 disabled:opacity-40"
-            data-tip="Mulai di notch (notch tetap terbuka)"
+            data-tip={script ? "Mulai di notch (notch tetap terbuka)" : "Pilih naskah dulu"}
           >
             <Play size={12} fill="currentColor" /> Mulai
           </button>
@@ -121,7 +177,10 @@ function ScriptEditor(_props: TabPanelProps) {
               </button>
               <button
                 type="button"
-                onClick={() => deleteScript(script.id)}
+                onClick={() => {
+                  deleteScript(script.id);
+                  setOpenId(null);
+                }}
                 className="rounded-full p-1.5 text-notch-muted hover:bg-notch-fg/10 hover:text-notch-fg"
                 aria-label="Hapus naskah"
                 data-tip="Hapus naskah"
@@ -139,8 +198,8 @@ function ScriptEditor(_props: TabPanelProps) {
             />
           </>
         ) : (
-          <div className="flex h-[134px] items-center justify-center text-sm text-notch-muted">
-            Buat naskah dulu untuk mulai
+          <div className="glass-well flex h-[134px] items-center justify-center rounded-2xl px-6 text-center text-sm text-notch-muted">
+            {data.scripts.length === 0 ? "Buat naskah dulu untuk mulai" : "Klik naskah di kiri untuk membukanya"}
           </div>
         )}
 

@@ -38,9 +38,11 @@ export function activeScript(data: TeleprompterData): Script | null {
   return data.scripts.find((s) => s.id === data.activeId) ?? data.scripts[0] ?? null;
 }
 
-export function createScript(): void {
+/** Adds an empty script, makes it the active one, and returns its id. */
+export function createScript(): string {
   const script: Script = { id: crypto.randomUUID(), title: "Naskah baru", body: "", updatedAt: Date.now() };
   teleprompterData.set((d) => ({ scripts: [script, ...d.scripts], activeId: script.id }));
+  return script.id;
 }
 
 export function selectScript(id: string): void {

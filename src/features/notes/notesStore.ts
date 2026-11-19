@@ -102,9 +102,11 @@ function patchNote(id: string, patch: (n: Note) => Partial<Note>) {
   }));
 }
 
-export function createNote(kind: NoteKind): void {
+/** Adds an empty note, makes it the active one, and returns its id. */
+export function createNote(kind: NoteKind): string {
   const note: Note = { id: uid(), title: "", kind, text: "", items: [], updatedAt: Date.now() };
   notesData.set((d) => ({ notes: [note, ...d.notes], activeId: note.id }));
+  return note.id;
 }
 
 export function selectNote(id: string): void {

@@ -2,7 +2,6 @@ import { useState, type FormEvent } from "react";
 import { Check, ListChecks, Plus, StickyNote, Trash2, X } from "lucide-react";
 import type { TabPanelProps } from "../../app/tabs/types";
 import {
-  activeNote,
   addItem,
   clearDoneItems,
   createNote,
@@ -21,7 +20,78 @@ import {
 /** Notes tab: several notes, each free text or a checklist. */
 export default function NotesPanel(_props: TabPanelProps) {
   const data = notesData.use();
-  const note = activeNote(data);
+  // No note is shown until one is clicked (each time the notch opens); the
+  // list then fills the panel. Clicking the open note again goes back to it.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const note = openId ? (data.notes.find((n) => n.id === openId) ?? null) : null;
+
+  const open = (id: string) => {
+    selectNote(id);
+    setOpenId(id);
+  };
+
+  if (!note) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex h-8 items-center gap-1.5 px-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-notch-muted">
+            {data.notes.length === 0 ? "Catatan" : `${data.notes.length} catatan`}
+          </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setOpenId(createNote("text"))}
+            className="glass-button flex h-8 items-center justify-center gap-1 rounded-full px-3.5 text-xs font-semibold"
+          >
+            <Plus size={13} /> Catatan
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpenId(createNote("checklist"))}
+            className="glass-button flex h-8 items-center justify-center gap-1 rounded-full px-3.5 text-xs font-semibold"
+          >
+            <ListChecks size={13} /> Checklist
+          </button>
+        </div>
+        {data.notes.length === 0 ? (
+          <div className="glass-well flex h-[134px] items-center justify-center rounded-2xl text-sm text-notch-muted">
+            Belum ada catatan. Buat catatan atau checklist baru.
+          </div>
+        ) : (
+          <ul className="flex max-h-[200px] flex-col gap-0.5 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+            {data.notes.map((n) => {
+              const remaining = n.kind === "checklist" ? n.items.filter((i) => !i.done).length : 0;
+              const preview =
+                n.kind === "checklist"
+                  ? n.items.length === 0
+                    ? "Checklist kosong"
+                    : `${remaining} dari ${n.items.length} belum selesai`
+                  : n.text.trim().replace(/\s+/g, " ") || "Masih kosong";
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => open(n.id)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-notch-fg/[0.07]"
+                  >
+                    {n.kind === "checklist" ? (
+                      <ListChecks size={15} className="shrink-0 text-notch-muted" />
+                    ) : (
+                      <StickyNote size={15} className="shrink-0 text-notch-muted" />
+                    )}
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[13px] font-semibold">{displayTitle(n)}</span>
+                      <span className="truncate text-[11.5px] text-notch-muted">{preview}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-4">
@@ -30,7 +100,7 @@ export default function NotesPanel(_props: TabPanelProps) {
         <div className="flex gap-1.5">
           <button
             type="button"
-            onClick={() => createNote("text")}
+            onClick={() => setOpenId(createNote("text"))}
             className="glass-button flex h-8 flex-1 items-center justify-center gap-1 rounded-full text-xs font-semibold"
             data-tip="Catatan teks baru"
           >
@@ -38,7 +108,7 @@ export default function NotesPanel(_props: TabPanelProps) {
           </button>
           <button
             type="button"
-            onClick={() => createNote("checklist")}
+            onClick={() => setOpenId(createNote("checklist"))}
             className="glass-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
             aria-label="Checklist baru"
             data-tip="Checklist baru"
@@ -49,12 +119,12 @@ export default function NotesPanel(_props: TabPanelProps) {
         <ul className="h-[100px] overflow-y-auto [scrollbar-width:thin]">
           {data.notes.length === 0 && <li className="py-2 text-center text-xs text-notch-muted">Belum ada catatan</li>}
           {data.notes.map((n) => {
-            const open = n.kind === "checklist" ? n.items.filter((i) => !i.done).length : 0;
+            const remaining = n.kind === "checklist" ? n.items.filter((i) => !i.done).length : 0;
             return (
               <li key={n.id}>
                 <button
                   type="button"
-                  onClick={() => selectNote(n.id)}
+                  onClick={() => (n.id === openId ? setOpenId(null) : open(n.id))}
                   className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-left text-xs ${
                     n.id === note?.id ? "bg-notch-fg/15 font-semibold" : "text-notch-muted hover:bg-notch-fg/5 hover:text-notch-fg"
                   }`}
@@ -66,7 +136,7 @@ export default function NotesPanel(_props: TabPanelProps) {
                     <StickyNote size={12} className="shrink-0 opacity-70" />
                   )}
                   <span className="min-w-0 flex-1 truncate">{displayTitle(n)}</span>
-                  {open > 0 && <span className="shrink-0 tabular-nums opacity-70">{open}</span>}
+                  {remaining > 0 && <span className="shrink-0 tabular-nums opacity-70">{remaining}</span>}
                 </button>
               </li>
             );
@@ -76,22 +146,14 @@ export default function NotesPanel(_props: TabPanelProps) {
 
       {/* Editor */}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        {note ? (
-          <>
-            <NoteHeader note={note} />
-            {note.kind === "text" ? <TextBody note={note} /> : <ChecklistBody note={note} />}
-          </>
-        ) : (
-          <div className="flex h-[140px] items-center justify-center text-sm text-notch-muted">
-            Buat catatan atau checklist baru
-          </div>
-        )}
+        <NoteHeader note={note} onDeleted={() => setOpenId(null)} />
+        {note.kind === "text" ? <TextBody note={note} /> : <ChecklistBody note={note} />}
       </div>
     </div>
   );
 }
 
-function NoteHeader({ note }: { note: Note }) {
+function NoteHeader({ note, onDeleted }: { note: Note; onDeleted: () => void }) {
   const kindButton = (active: boolean) =>
     `flex h-6 w-7 items-center justify-center rounded-full transition-colors ${
       active ? "glass-button text-notch-fg" : "text-notch-muted hover:text-notch-fg"
@@ -128,7 +190,10 @@ function NoteHeader({ note }: { note: Note }) {
       </div>
       <button
         type="button"
-        onClick={() => deleteNote(note.id)}
+        onClick={() => {
+          deleteNote(note.id);
+          onDeleted();
+        }}
         className="shrink-0 rounded-full p-1.5 text-notch-muted hover:bg-notch-fg/10 hover:text-notch-fg"
         aria-label="Hapus catatan"
         data-tip="Hapus catatan"
