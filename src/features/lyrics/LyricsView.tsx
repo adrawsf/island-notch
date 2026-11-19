@@ -28,7 +28,7 @@ export function LyricsView({ media, result, className = "" }: LyricsViewProps) {
     return <div className={`flex items-center justify-center text-sm text-notch-muted ${className}`}>Instrumental</div>;
   }
   // Without a playback position (tab-only media) timing is unknown: show text.
-  return lyrics.synced && !media.tabOnly ? (
+  return lyrics.synced && (!media.tabOnly || media.timelineEstimated) ? (
     <SyncedLyrics media={media} lyrics={lyrics} className={className} />
   ) : (
     <PlainLyrics lyrics={lyrics} className={className} />

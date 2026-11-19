@@ -36,7 +36,7 @@ export function MiniPlayer() {
   const compact = settings.miniPlayerCompact;
   // Compact mode exists to show lyrics, so it always fetches them.
   const lyrics = useLyrics(media, settings.miniPlayerLyrics || compact);
-  const synced = lyrics.status === "found" && lyrics.lyrics.synced && !media.tabOnly ? lyrics.lyrics : null;
+  const synced = lyrics.status === "found" && lyrics.lyrics.synced && (!media.tabOnly || media.timelineEstimated) ? lyrics.lyrics : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const cardWidth = compact ? CARD_WIDTH.compact : CARD_WIDTH.full;
 

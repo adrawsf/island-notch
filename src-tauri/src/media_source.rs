@@ -93,7 +93,8 @@ fn candidate_process_names(app_id: &str) -> Vec<String> {
     names
 }
 
-/// A browser tab that is audibly playing music, read from its name.
+/// A browser tab on a music site, read from its name.
+#[derive(Clone)]
 pub struct MusicTab {
     /// App id the browser uses in SMTC (so "open source" finds it again).
     pub app_id: String,
@@ -163,6 +164,17 @@ fn browser_app_id(process: &str) -> String {
 #[cfg(windows)]
 pub fn find_music_tab() -> Option<MusicTab> {
     win::find_music_tab()
+}
+
+/// Every open tab on a known music site, playing or paused.
+#[cfg(windows)]
+pub fn music_tabs() -> Vec<MusicTab> {
+    win::music_tabs()
+}
+
+#[cfg(not(windows))]
+pub fn music_tabs() -> Vec<MusicTab> {
+    Vec::new()
 }
 
 #[cfg(not(windows))]
@@ -296,6 +308,22 @@ mod win {
             }
         }
         None
+    }
+
+    pub fn music_tabs() -> Vec<MusicTab> {
+        let names: Vec<String> = BROWSERS.iter().map(|b| b.to_string()).collect();
+        let mut found = Vec::new();
+        unsafe {
+            let Some(uia) = automation() else { return found };
+            for (hwnd, process) in windows_of(&names) {
+                for (name, _) in tabs_of(&uia, hwnd) {
+                    if let Some((title, artist)) = parse_music_tab(&name) {
+                        found.push(MusicTab { app_id: browser_app_id(&process), title, artist });
+                    }
+                }
+            }
+        }
+        found
     }
 
     /// Finds the tab playing `title` across `windows`, selects it and returns

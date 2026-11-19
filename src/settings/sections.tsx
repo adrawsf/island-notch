@@ -257,7 +257,7 @@ function MediaSection() {
             disabled={!s.idleShowsMedia}
           />
         </Row>
-        <Row title="Abaikan video" hint="Film dan video di browser tidak dianggap musik.">
+        <Row title="Abaikan video" hint="Di browser, hanya YouTube Music, Spotify, SoundCloud, Apple Music, Deezer, dan TIDAL yang dianggap musik. YouTube biasa dan situs video lain diabaikan.">
           <Toggle checked={s.ignoreVideo} onChange={(v) => set("ignoreVideo", v)} label="Abaikan video" />
         </Row>
       </Group>

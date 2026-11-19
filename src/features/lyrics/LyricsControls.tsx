@@ -23,7 +23,7 @@ export function LyricsSettings({ media, result }: { media: MediaState; result: L
   const { lyricsSource } = useSettings();
   const offset = useLyricsOffset(media);
   const found = result.status === "found" ? result.lyrics.provider : null;
-  const synced = result.status === "found" && result.lyrics.synced && !media.tabOnly;
+  const synced = result.status === "found" && result.lyrics.synced && (!media.tabOnly || media.timelineEstimated);
 
   return (
     <div className="flex flex-col gap-2.5">

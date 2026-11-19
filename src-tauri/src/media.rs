@@ -35,6 +35,9 @@ pub struct MediaState {
     /// Read from a browser tab's name because Windows reports no music
     /// session for it: no timeline, controls or artwork.
     pub tab_only: bool,
+    /// With `tab_only`: the position is estimated (no real timeline), close
+    /// enough for synced lyrics.
+    pub timeline_estimated: bool,
 }
 
 impl MediaState {
@@ -184,10 +187,10 @@ mod smtc {
 
     /// A film or other video rather than music:
     /// - the app says so (desktop video players report the Video type), or
-    /// - a browser tab without an artist. Music sites (YouTube Music, Spotify,
-    ///   SoundCloud...) fill in the artist through the Media Session API;
-    ///   film and video sites usually leave it empty, and browsers report
-    ///   every tab as Music, so the missing artist is the reliable signal.
+    /// - a browser session that is not a tab on a known music site (YouTube
+    ///   Music, Spotify, SoundCloud, Apple Music, Deezer, TIDAL). Browsers
+    ///   report every tab as Music, and video sites such as YouTube fill in
+    ///   an "artist" (the channel), so only the site tells them apart.
     fn is_video(session: &Session, id_lower: &str) -> bool {
         use windows::Media::MediaPlaybackType;
         let reported_video = session
@@ -202,32 +205,49 @@ mod smtc {
         if !is_browser_id(id_lower) {
             return false;
         }
-        let artist = session
+        let title = session
             .TryGetMediaPropertiesAsync()
             .and_then(|op| op.get())
-            .and_then(|p| p.Artist())
-            .map(|a| a.to_string())
+            .and_then(|p| p.Title())
+            .map(|t| t.to_string())
             .unwrap_or_default();
-        artist.trim().is_empty()
+        // A paused song keeps its session even when its tab name no longer
+        // shows the song (Spotify Web shows "Spotify – Web Player" then).
+        let shown = LAST_MUSIC_TITLE.lock().map(|t| t.clone()).unwrap_or_default();
+        if super::same_title(&shown, &title) {
+            return false;
+        }
+        !music_tabs().iter().any(|tab| super::same_title(&tab.title, &title))
     }
 
-    /// Whether the session belongs to a browser.
-    pub fn is_browser(session: &Session) -> bool {
-        is_browser_id(&app_id(session).to_lowercase())
+    /// Title of the song shown last, so it is not dropped once paused.
+    static LAST_MUSIC_TITLE: Mutex<String> = Mutex::new(String::new());
+
+    pub fn remember_music(title: &str) {
+        if let Ok(mut t) = LAST_MUSIC_TITLE.lock() {
+            if *t != title {
+                *t = title.to_string();
+            }
+        }
     }
 
-    /// A playing session of `app_id` (any case) showing `title`, if Windows has one.
-    pub fn playing_session_with(manager: &Manager, app: &str, title: &str) -> Option<Session> {
-        let sessions = manager.GetSessions().ok()?;
-        sessions.into_iter().find(|s| {
-            status(s) == Status::Playing
-                && app_id(s).eq_ignore_ascii_case(app)
-                && s.TryGetMediaPropertiesAsync()
-                    .and_then(|op| op.get())
-                    .and_then(|p| p.Title())
-                    .map(|t| super::same_title(&t.to_string(), title))
-                    .unwrap_or(false)
-        })
+    /// Music-site tabs, read at most every couple of seconds (UI Automation is slow).
+    fn music_tabs() -> Vec<crate::media_source::MusicTab> {
+        use std::time::{Duration, Instant};
+        static CACHE: Mutex<Option<(Instant, Vec<crate::media_source::MusicTab>)>> = Mutex::new(None);
+        const MAX_AGE: Duration = Duration::from_millis(2500);
+        if let Ok(cache) = CACHE.lock() {
+            if let Some((at, tabs)) = cache.as_ref() {
+                if at.elapsed() < MAX_AGE {
+                    return tabs.clone();
+                }
+            }
+        }
+        let tabs = crate::media_source::music_tabs();
+        if let Ok(mut cache) = CACHE.lock() {
+            *cache = Some((Instant::now(), tabs.clone()));
+        }
+        tabs
     }
 
     pub fn app_id(session: &Session) -> String {
@@ -284,6 +304,7 @@ mod smtc {
             can_seek: flag(&|c| c.IsPlaybackPositionEnabled()) && duration_ms > 0,
             artwork: None,
             tab_only: false,
+            timeline_estimated: false,
         })
     }
 
@@ -344,9 +365,9 @@ pub fn start(app: AppHandle) {
         const TAB_SCAN_EVERY: u32 = 6;
         let mut tab_scan_ticks = TAB_SCAN_EVERY;
         let mut tab_state: Option<MediaState> = None;
-        // A music tab playing while the browser reports another tab (a video).
-        let mut browser_scan_ticks = TAB_SCAN_EVERY;
-        let mut music_tab: Option<crate::media_source::MusicTab> = None;
+        const TAB_SCAN_FOLLOW: u32 = 2;
+        // The last song Windows reported with a real timeline.
+        let mut last_real: Option<MediaState> = None;
 
         loop {
             std::thread::sleep(POLL_INTERVAL);
@@ -355,72 +376,69 @@ pub fn start(app: AppHandle) {
             }
             let Some(mgr) = &manager else { continue };
 
-            let mut session = smtc::pick_session(mgr, &last_emitted.app_id, ignore_video(&app));
+            let session = smtc::pick_session(mgr, &last_emitted.app_id, ignore_video(&app));
             let mut state = match session.as_ref().and_then(smtc::read_state) {
                 Some(s) => s,
                 None => MediaState { sampled_at_ms: smtc::now_ms(), ..Default::default() },
             };
 
-            // A browser tells Windows only about the tab used last: with music
-            // in one tab and a video clicked in another, that is the video.
-            // When a music tab is audibly playing elsewhere, show that instead.
-            if state.active && session.as_ref().is_some_and(smtc::is_browser) {
-                browser_scan_ticks += 1;
-                if browser_scan_ticks >= TAB_SCAN_EVERY {
-                    browser_scan_ticks = 0;
-                    music_tab = crate::media_source::find_music_tab().filter(|t| !same_title(&t.title, &state.title));
-                }
-                if let Some(tab) = &music_tab {
-                    // The music may be in another browser that Windows does report.
-                    let other = smtc::playing_session_with(mgr, &tab.app_id, &tab.title);
-                    match other.as_ref().and_then(smtc::read_state) {
-                        Some(s) => {
-                            state = s;
-                            session = other;
-                        }
-                        None => {
-                            state = MediaState {
-                                sampled_at_ms: state.sampled_at_ms,
-                                active: true,
-                                app_id: tab.app_id.clone(),
-                                title: tab.title.clone(),
-                                artist: tab.artist.clone(),
-                                is_playing: true,
-                                tab_only: true,
-                                ..Default::default()
-                            };
-                            // Its cover is not the video's.
-                            session = None;
-                        }
-                    }
-                }
-            } else {
-                browser_scan_ticks = TAB_SCAN_EVERY;
-                music_tab = None;
+            if state.active {
+                smtc::remember_music(&state.title);
             }
 
             // Chrome reports only its most recently used media to Windows, so
             // music in one tab disappears once a film in another was clicked.
             // Then read the playing music tab's name instead.
+            // The tab gives no position, so the lyrics run on an estimated
+            // clock: carried on from the song's last real position when it is
+            // the same song, else started when the new song first shows up.
             if state.active {
                 tab_state = None;
                 tab_scan_ticks = TAB_SCAN_EVERY;
             } else {
                 tab_scan_ticks += 1;
-                if tab_scan_ticks >= TAB_SCAN_EVERY {
+                // Rescan faster while following a tab, to catch the next song quickly.
+                let every = if tab_state.is_some() { TAB_SCAN_FOLLOW } else { TAB_SCAN_EVERY };
+                if tab_scan_ticks >= every {
                     tab_scan_ticks = 0;
-                    tab_state = crate::media_source::find_music_tab().map(|tab| MediaState {
-                        active: true,
-                        app_id: tab.app_id,
-                        title: tab.title,
-                        artist: tab.artist,
-                        is_playing: true,
-                        tab_only: true,
-                        ..Default::default()
+                    let now = smtc::now_ms();
+                    tab_state = crate::media_source::find_music_tab().map(|tab| {
+                        if let Some(same) = tab_state.as_ref().filter(|t| same_title(&t.title, &tab.title)) {
+                            return same.clone();
+                        }
+                        match last_real.as_ref().filter(|r| same_title(&r.title, &tab.title)) {
+                            // Same names as before, so the lyrics already found stay.
+                            Some(real) => MediaState {
+                                position_ms: real.predicted_position(now),
+                                sampled_at_ms: now,
+                                is_playing: true,
+                                tab_only: true,
+                                timeline_estimated: true,
+                                can_play_pause: false,
+                                can_next: false,
+                                can_previous: false,
+                                can_seek: false,
+                                ..real.clone()
+                            },
+                            None => MediaState {
+                                active: true,
+                                app_id: tab.app_id,
+                                title: tab.title,
+                                artist: tab.artist,
+                                is_playing: true,
+                                tab_only: true,
+                                timeline_estimated: true,
+                                // Found up to one scan after it started.
+                                position_ms: TAB_SCAN_FOLLOW as u64 * POLL_INTERVAL.as_millis() as u64 / 2,
+                                sampled_at_ms: now,
+                                ..Default::default()
+                            },
+                        }
                     });
                 }
                 if let Some(tab) = &tab_state {
-                    state = MediaState { sampled_at_ms: state.sampled_at_ms, ..tab.clone() };
+                    let now = state.sampled_at_ms;
+                    state = MediaState { position_ms: tab.predicted_position(now), sampled_at_ms: now, ..tab.clone() };
                 }
             }
 
@@ -448,6 +466,10 @@ pub fn start(app: AppHandle) {
                 track_key.clear();
                 artwork = None;
                 previous_artwork = None;
+            }
+
+            if state.active && !state.tab_only {
+                last_real = Some(state.clone());
             }
 
             let now = state.sampled_at_ms;

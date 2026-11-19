@@ -25,7 +25,7 @@ interface MediaPillProps {
 /** Collapsed-notch content while media is active: cover plus title or the current lyric line. */
 export function MediaPill({ media, showLyrics, onClick, onWheelVolume }: MediaPillProps) {
   const lyrics = useLyrics(media, showLyrics);
-  const synced = lyrics.status === "found" && lyrics.lyrics.synced && !media.tabOnly ? lyrics.lyrics : null;
+  const synced = lyrics.status === "found" && lyrics.lyrics.synced && (!media.tabOnly || media.timelineEstimated) ? lyrics.lyrics : null;
   const showingLyrics = synced !== null && media.isPlaying;
   const volume = useAppVolume(media);
   const [flash, setFlash] = useState(false);

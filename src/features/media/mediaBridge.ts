@@ -27,6 +27,8 @@ export interface MediaState {
    * no position, controls or artwork, so lyrics cannot be synced.
    */
   tabOnly: boolean;
+  /** With tabOnly: the position is an estimate, good enough for synced lyrics. */
+  timelineEstimated: boolean;
 }
 
 export type MediaAction = "playPause" | "next" | "previous";
@@ -47,6 +49,7 @@ export const EMPTY_MEDIA: MediaState = {
   canSeek: false,
   artwork: null,
   tabOnly: false,
+  timelineEstimated: false,
 };
 
 const EVENT_MEDIA_STATE = "media://state";
