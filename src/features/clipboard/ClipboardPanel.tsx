@@ -79,9 +79,9 @@ export default function ClipboardPanel({ requestClose }: TabPanelProps) {
         <ClearButton disabled={recent.length === 0} />
       </div>
 
-      <ul className="h-[176px] overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+      <ul className="max-h-[176px] overflow-y-auto pr-0.5 [scrollbar-width:thin]">
         {!settings.clipboardHistory ? (
-          <li className="flex h-full flex-col items-center justify-center gap-2 text-center text-xs text-notch-muted">
+          <li className="flex flex-col items-center justify-center gap-2 py-5 text-center text-xs text-notch-muted">
             Riwayat clipboard dimatikan.
             <button
               type="button"
@@ -92,7 +92,7 @@ export default function ClipboardPanel({ requestClose }: TabPanelProps) {
             </button>
           </li>
         ) : entries.length === 0 ? (
-          <li className="flex h-full items-center justify-center px-6 text-center text-xs text-notch-muted">
+          <li className="flex items-center justify-center px-6 py-5 text-center text-xs text-notch-muted">
             {query ? "Tidak ada yang cocok." : "Belum ada yang disalin. Salin apa saja (Ctrl+C), nanti muncul di sini."}
           </li>
         ) : (

@@ -346,7 +346,7 @@ fn owner(app: &AppHandle) -> windows::Win32::Foundation::HWND {
 pub fn clipboard_list(store: State<'_, ClipboardStore>, query: Option<String>) -> Vec<Entry> {
     let Ok(history) = store.inner.lock() else { return Vec::new() };
     let query = query.map(|q| q.trim().to_lowercase()).filter(|q| !q.is_empty());
-    history
+    let mut entries: Vec<Entry> = history
         .items
         .iter()
         .filter(|item| match &query {
@@ -354,7 +354,10 @@ pub fn clipboard_list(store: State<'_, ClipboardStore>, query: Option<String>) -
             Some(q) => item.text.to_lowercase().contains(q) || item.source.contains(q),
         })
         .map(Entry::from)
-        .collect()
+        .collect();
+    // Newest first by time copied, whatever order the saved history is in.
+    entries.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    entries
 }
 
 /// An image item's thumbnail as a data URI.
