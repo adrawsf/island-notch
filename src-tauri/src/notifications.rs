@@ -295,6 +295,7 @@ mod win {
         };
         // Notifications already there at start are listed but not announced.
         let mut seen: Option<HashSet<u32>> = None;
+        let mut known: HashMap<u32, Notif> = HashMap::new();
         loop {
             if !ENABLED.load(Ordering::SeqCst) {
                 seen = None;
@@ -308,7 +309,21 @@ mod win {
                     .ok()
                     .filter(finished)
                     .and_then(|op| op.GetResults().ok())
-                    .map(|list| list.into_iter().filter_map(|n| convert(&n)).collect())
+                    .map(|list| {
+                        // Each notification is read once; later polls only look at its id.
+                        let items: Vec<Notif> = list
+                            .into_iter()
+                            .filter_map(|n| {
+                                let id = n.Id().ok()?;
+                                match known.get(&id) {
+                                    Some(cached) => Some(cached.clone()),
+                                    None => convert(&n),
+                                }
+                            })
+                            .collect();
+                        known = items.iter().map(|n| (n.id, n.clone())).collect();
+                        items
+                    })
             } else {
                 Some(Vec::new())
             };

@@ -42,7 +42,10 @@ fn set_visible_blocking(app: &AppHandle, visible: bool) -> tauri::Result<()> {
             w.show()?;
             apply_no_activate(&w);
         }
-        (Some(w), false) => w.hide()?,
+        (Some(w), false) => {
+            w.hide()?;
+            crate::window::release_when_idle(app, LABEL);
+        }
         (None, true) => {
             let w = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("miniplayer.html".into()))
                 .title("Island Notch Mini Player")

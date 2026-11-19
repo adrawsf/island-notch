@@ -3,6 +3,7 @@ import { useShellSync } from "./useShellSync";
 import { useOcrToasts } from "../features/clipboard/useOcrToasts";
 import { useSystemAlerts } from "../features/system/useSystemAlerts";
 import { useNotificationCenter } from "../features/notifications/useNotificationCenter";
+import { useUpdateChecks } from "../core/update/updater";
 import { TooltipLayer } from "../shared/ui/TooltipLayer";
 import { startAmbienceController } from "../features/pomodoro/ambience/ambience";
 import { startChimeController } from "../features/home/chime";
@@ -17,6 +18,7 @@ export function App() {
   useOcrToasts();
   useSystemAlerts();
   useNotificationCenter();
+  useUpdateChecks();
   return (
     <>
       <NotchShell />

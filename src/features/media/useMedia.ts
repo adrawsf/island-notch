@@ -2,7 +2,7 @@
  * Now-playing state shared by every component (tab, pill, shell).
  * One Tauri subscription for the whole app, started on first use.
  */
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { EMPTY_MEDIA, getMediaState, onMediaState, type MediaState } from "./mediaBridge";
 
 let current: MediaState = EMPTY_MEDIA;
@@ -38,6 +38,34 @@ export function useMedia(): MediaState {
  * Live playback position, interpolated between SMTC updates while playing.
  * Re-renders only the component that uses it.
  */
+/** Playback position at `now`, interpolated while playing. */
+export function positionAt(media: MediaState, now: number): number {
+  if (!media.isPlaying) return media.positionMs;
+  const position = media.positionMs + Math.max(0, now - media.sampledAtMs);
+  return media.durationMs > 0 ? Math.min(position, media.durationMs) : position;
+}
+
+/**
+ * A value derived from the playback position, checked every `intervalMs` but
+ * re-rendering only when it changes (e.g. the current lyric line), so a
+ * collapsed notch is not redrawn several times a second for nothing.
+ */
+export function useFromPosition<T>(media: MediaState, derive: (positionMs: number) => T, intervalMs = 200): T {
+  const [value, setValue] = useState(() => derive(positionAt(media, Date.now())));
+  const deriveRef = useRef(derive);
+  deriveRef.current = derive;
+
+  useEffect(() => {
+    const tick = () => setValue(deriveRef.current(positionAt(media, Date.now())));
+    tick();
+    if (!media.isPlaying) return;
+    const id = setInterval(tick, intervalMs);
+    return () => clearInterval(id);
+  }, [media, intervalMs]);
+
+  return value;
+}
+
 export function useMediaPosition(media: MediaState, intervalMs = 250): number {
   const [now, setNow] = useState(() => Date.now());
 

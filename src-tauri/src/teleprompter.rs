@@ -172,11 +172,12 @@ fn place_below_notch(app: &AppHandle, w: &WebviewWindow) -> tauri::Result<()> {
     w.set_position(LogicalPosition::new(pos.x + (size.width - WIDTH) / 2.0, pos.y + TOP_MARGIN))
 }
 
-/// Hides the window; it keeps its position and size for the session.
+/// Hides the window, and frees it once it stayed closed for a while.
 #[tauri::command]
 pub fn teleprompter_close(app: AppHandle) -> Result<(), String> {
     if let Some(w) = window(&app) {
         w.hide().map_err(|e| e.to_string())?;
+        crate::window::release_when_idle(&app, LABEL);
     }
     let _ = app.emit(EVENT_VISIBILITY, false);
     Ok(())

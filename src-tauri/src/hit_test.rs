@@ -32,6 +32,13 @@ impl HitRegion {
     fn contains(&self, x: f64, y: f64) -> bool {
         x >= self.x && x <= self.x + self.width && y >= self.y && y <= self.y + self.height
     }
+
+    /// Distance from the point to the rectangle (0 inside).
+    fn distance(&self, x: f64, y: f64) -> f64 {
+        let dx = (self.x - x).max(x - (self.x + self.width)).max(0.0);
+        let dy = (self.y - y).max(y - (self.y + self.height)).max(0.0);
+        dx.hypot(dy)
+    }
 }
 
 #[derive(Default)]
@@ -53,19 +60,41 @@ pub fn start(app: AppHandle) {
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
     use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 
-    const POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(16);
+    use std::time::Duration;
+    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::Win32::UI::HiDpi::GetDpiForWindow;
+    use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsWindowVisible};
+
+    /// Cursor near the notch (or it is open): smooth hover and clicks.
+    const FAST: Duration = Duration::from_millis(16);
+    /// Cursor far away: nothing can happen before it gets closer.
+    const SLOW: Duration = Duration::from_millis(60);
+    /// Window hidden (tray, full screen app).
+    const IDLE: Duration = Duration::from_millis(250);
+    /// Distance from the notch (CSS px) under which polling is fast.
+    const NEAR: f64 = 160.0;
 
     std::thread::spawn(move || {
         let mut was_inside = false;
         let mut button_was_down = false;
         let mut pending_nudge = false;
+        let mut interval = FAST;
+        // The notch window lives as long as the app.
+        let mut hwnd: Option<HWND> = None;
 
         loop {
-            std::thread::sleep(POLL_INTERVAL);
+            std::thread::sleep(interval);
+            interval = IDLE;
 
             let Some(window) = crate::window::main_window(&app) else { continue };
+            // Plain Win32 reads: Tauri's getters (even the HWND) go through the
+            // main thread, which is a lot of round trips at this rate.
+            if hwnd.is_none() {
+                hwnd = window.hwnd().ok().map(|raw| HWND(raw.0));
+            }
+            let Some(hwnd) = hwnd else { continue };
             // Hidden from the tray: no hover, no click-outside.
-            if !window.is_visible().unwrap_or(true) {
+            if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
                 continue;
             }
             let region = app
@@ -77,22 +106,26 @@ pub fn start(app: AppHandle) {
             let Some(region) = region else { continue };
 
             let mut cursor = POINT::default();
-            if unsafe { GetCursorPos(&mut cursor) }.is_err() {
+            let mut rect = RECT::default();
+            if unsafe { GetCursorPos(&mut cursor) }.is_err() || unsafe { GetWindowRect(hwnd, &mut rect) }.is_err() {
                 continue;
             }
-            let (Ok(origin), Ok(scale)) = (window.outer_position(), window.scale_factor()) else {
-                continue;
+            let scale = match unsafe { GetDpiForWindow(hwnd) } {
+                0 => 1.0,
+                dpi => dpi as f64 / 96.0,
             };
 
             // Physical screen pixels -> CSS pixels inside the window.
-            let local_x = (cursor.x - origin.x) as f64 / scale;
-            let local_y = (cursor.y - origin.y) as f64 / scale;
+            let local_x = (cursor.x - rect.left) as f64 / scale;
+            let local_y = (cursor.y - rect.top) as f64 / scale;
             let inside = region.contains(local_x, local_y);
+            let near = region.expanded || region.distance(local_x, local_y) < NEAR;
+            interval = if near { FAST } else { SLOW };
 
             // Reconcile against the real window style every tick, not only on
             // enter/leave: focus changes and clicks inside the notch can make the
             // window drop WS_EX_TRANSPARENT, leaving the whole window blocking clicks.
-            if is_click_through(&window) != Some(!inside) {
+            if Some(click_through(hwnd)) != Some(!inside) {
                 let _ = window.set_ignore_cursor_events(!inside);
                 if inside {
                     pending_nudge = true;
@@ -107,7 +140,7 @@ pub fn start(app: AppHandle) {
             // WebView2 ignores a resting cursor until the next WM_MOUSEMOVE once
             // click-through is lifted, so a quick tap right after entering would be
             // lost. Wait until the style change has landed, then send a zero move.
-            if pending_nudge && is_click_through(&window) == Some(false) {
+            if pending_nudge && !click_through(hwnd) {
                 pending_nudge = false;
                 nudge_cursor();
             }
@@ -128,12 +161,15 @@ pub fn start(app: AppHandle) {
 /// Whether the window currently has `WS_EX_TRANSPARENT` (clicks pass through).
 #[cfg(windows)]
 pub(crate) fn is_click_through(window: &tauri::WebviewWindow) -> Option<bool> {
-    use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TRANSPARENT};
     // Tauri's HWND comes from a different `windows` version; rewrap the raw pointer.
-    let hwnd = HWND(window.hwnd().ok()?.0);
+    Some(click_through(windows::Win32::Foundation::HWND(window.hwnd().ok()?.0)))
+}
+
+#[cfg(windows)]
+fn click_through(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_EXSTYLE, WS_EX_TRANSPARENT};
     let ex_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) } as u32;
-    Some(ex_style & WS_EX_TRANSPARENT.0 != 0)
+    ex_style & WS_EX_TRANSPARENT.0 != 0
 }
 
 /// Sends a zero-distance mouse move so WebView2 notices the cursor.

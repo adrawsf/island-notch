@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type WheelEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Lyrics } from "../lyrics/types";
-import { currentLineIndex } from "../lyrics/lyricsText";
 import { useRomanized } from "../lyrics/romanize";
-import { useLyricPosition, useLyrics } from "../lyrics/useLyrics";
+import { useLyricLineIndex, useLyrics } from "../lyrics/useLyrics";
 import type { MediaState } from "./mediaBridge";
 import { Artwork } from "./Artwork";
 import { stepAppVolume, useAppVolume, VOLUME_STEP } from "./volume";
@@ -102,9 +101,8 @@ function TitleLine({ media }: { media: MediaState }) {
 
 /** Current lyric line; falls back to the title before the first line and in gaps. */
 function LyricLine({ media, lyrics }: { media: MediaState; lyrics: Lyrics }) {
-  const position = useLyricPosition(media);
+  const index = useLyricLineIndex(media, lyrics.lines);
   const romanized = useRomanized(lyrics);
-  const index = currentLineIndex(lyrics.lines, position);
   // One line only: the romanization replaces the original when there is one.
   const text = index >= 0 ? (romanized?.[index] ?? lyrics.lines[index].text) : "";
 

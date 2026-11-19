@@ -41,9 +41,17 @@
       }
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5NzBBODZEQUI3RkEzNzAKUldSd28zK3JiYWh3dVZ5VkRMWE95bGVUMllva1o0dWdOSzlxU2N1UTQvNlI2YmRZQkF3VDVtY1MK",
+      "endpoints": ["https://github.com/adrawsf/island-notch/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

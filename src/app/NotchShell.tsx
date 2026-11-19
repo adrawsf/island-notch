@@ -27,8 +27,16 @@ import { NotchToastView } from "./NotchToastView";
 import { TabBar } from "./TabBar";
 
 const IN_TAURI = isTauri();
+/** How long the notch stays collapsed before its memory is trimmed. */
+const MEMORY_SAVER_DELAY_MS = 10_000;
 /** Jelly spring for the outline: overshoots a little and settles, like the Dynamic Island. */
-const SPRING = { type: "spring", stiffness: 300, damping: 19, mass: 0.9 } as const;
+// restDelta/restSpeed: stop once the motion is invisible instead of
+// redrawing sub-pixel wobbles for another second.
+const SPRING = { type: "spring", stiffness: 300, damping: 19, mass: 0.9, restDelta: 0.5, restSpeed: 4 } as const;
+/** How long after a view switch its size changes still get the spring. */
+const VIEW_SETTLE_MS = 800;
+/** Small size changes while collapsed (lyric lines). */
+const RESIZE = { type: "tween", duration: 0.28, ease: [0.2, 0.8, 0.2, 1] } as const;
 const CONTENT_FADE = { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] } as const;
 /** Gap between the screen edge and the notch in "island" shape (CSS px, unscaled). */
 const ISLAND_TOP_GAP = 10;
@@ -123,6 +131,18 @@ export function NotchShell() {
   // Capsule when collapsed; rounder corners as it grows.
   const radius = view === "expanded" ? 28 : view === "toast" ? 24 : size.height / 2;
 
+  // Collapsed for a while: let WebView2 trim the notch's memory; back to
+  // normal as soon as it opens.
+  useEffect(() => {
+    if (!IN_TAURI) return;
+    if (notch.expanded) {
+      invoke("notch_memory_saver", { low: false }).catch(() => {});
+      return;
+    }
+    const t = setTimeout(() => invoke("notch_memory_saver", { low: true }).catch(() => {}), MEMORY_SAVER_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [notch.expanded]);
+
   // While a full screen app has the notch hidden, show it just for the toast.
   const showingToast = view === "toast";
   useEffect(() => {
@@ -154,6 +174,14 @@ export function NotchShell() {
 
   const { Panel } = notch.activeTab;
   const contentKey = view === "expanded" ? "expanded" : view === "toast" ? `toast-${toast?.id}` : `idle-${idle}`;
+  // Same view, new content size (the next lyric line, a widget's text): a
+  // short glide instead of the jelly spring, which would keep the notch
+  // animating almost nonstop while lyrics change every few seconds.
+  // (Only once the view has settled: right after a switch, the measured size
+  // of the new view still gets the spring.)
+  const viewSince = useRef({ key: contentKey, at: 0 });
+  if (viewSince.current.key !== contentKey) viewSince.current = { key: contentKey, at: Date.now() };
+  const sameView = view === "collapsed" && Date.now() - viewSince.current.at > VIEW_SETTLE_MS;
 
   return (
     <div className="flex h-full w-full justify-center" style={{ paddingTop: topGap }}>
@@ -166,7 +194,7 @@ export function NotchShell() {
         style={{ zoom }}
         initial={false}
         animate={{ width: size.width, height: size.height }}
-        transition={SPRING}
+        transition={sameView ? RESIZE : SPRING}
         // In Tauri the Rust hit-test is the single hover source. DOM events would
         // disagree with it mid-animation (the region jumps to the target size
         // while the div is still growing) and could close the notch under the cursor.

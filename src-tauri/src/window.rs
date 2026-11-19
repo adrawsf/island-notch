@@ -17,6 +17,52 @@ pub fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(MAIN_WINDOW_LABEL)
 }
 
+/// How long a closed secondary window (settings, mini player, teleprompter,
+/// OCR overlay) stays alive hidden, so reopening right away is instant.
+const RELEASE_AFTER: std::time::Duration = std::time::Duration::from_secs(45);
+
+/// Destroys the window `label` once it has stayed hidden for a while. Each
+/// webview keeps its own renderer process (tens of MB) even while hidden.
+pub fn release_when_idle(app: &AppHandle, label: &'static str) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(RELEASE_AFTER);
+        if let Some(w) = app.get_webview_window(label) {
+            if !w.is_visible().unwrap_or(true) {
+                let _ = w.destroy();
+            }
+        }
+    });
+}
+
+/// Asks WebView2 to keep the window's memory low (`true`, the notch idle) or
+/// normal. Low trims caches and lets the renderer page out unused memory.
+#[tauri::command]
+pub fn notch_memory_saver(app: AppHandle, low: bool) {
+    if let Some(w) = main_window(&app) {
+        set_memory_low(&w, low);
+    }
+}
+
+#[cfg(windows)]
+pub fn set_memory_low(window: &WebviewWindow, low: bool) {
+    let _ = window.with_webview(move |webview| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+        };
+        use wincore62::Interface;
+        let Ok(core) = webview.controller().CoreWebView2() else { return };
+        if let Ok(core) = core.cast::<ICoreWebView2_19>() {
+            let level =
+                if low { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL };
+            let _ = core.SetMemoryUsageTargetLevel(level);
+        }
+    });
+}
+
+#[cfg(not(windows))]
+pub fn set_memory_low(_window: &WebviewWindow, _low: bool) {}
+
 pub fn setup_main_window(app: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = main_window(app) {
         // Primary monitor until the frontend pushes the saved choice.

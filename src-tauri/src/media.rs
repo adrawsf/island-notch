@@ -235,7 +235,7 @@ mod smtc {
     fn music_tabs() -> Vec<crate::media_source::MusicTab> {
         use std::time::{Duration, Instant};
         static CACHE: Mutex<Option<(Instant, Vec<crate::media_source::MusicTab>)>> = Mutex::new(None);
-        const MAX_AGE: Duration = Duration::from_millis(2500);
+        const MAX_AGE: Duration = Duration::from_millis(5000);
         if let Ok(cache) = CACHE.lock() {
             if let Some((at, tabs)) = cache.as_ref() {
                 if at.elapsed() < MAX_AGE {

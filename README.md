@@ -79,4 +79,24 @@ src-tauri/src/
 3. **Media:** SMTC (judul, artis, artwork, progress, kontrol) ✅ (tab Media + pill lagu), lirik sinkron (LRCLIB, NetEase, Kugou, QQ Music, Genius; geser timing per lagu; romanisasi Jepang/Korea/Mandarin) ✅, mini player ✅, volume app musik (tab Media, mini player, scroll di pill) ✅.
 4. **Beranda kustom** ✅: kartu jam (ukuran + bunyi tiap jam dengan jam tenang), world clock, gambar/GIF, kucing piksel (juga bisa jadi widget idle). **Produktivitas:** Catatan (teks + checklist, gaya Keep) ✅, Pomodoro + ambience sintesis (hujan, ombak, api, angin, noise) ✅, Teleprompter (di notch atau window tembus pandang/tembus klik) ✅, Kalender Google.
 5. **Sistem:** Clipboard (riwayat teks + gambar, pin, cari, klik untuk paste) dan OCR (potong area layar, shortcut `Ctrl+Alt+T`) ✅, volume mixer (tab Suara: volume utama, per app, pilih output, mute mic + tanda di pill, scroll pill = volume utama) ✅, monitor sistem (tab Sistem: CPU, RAM, GPU, jaringan + grafik 60 detik, app terberat, disk, baterai; widget pill; peringatan) ✅, Drop Shelf (tab Shelf: drop file/teks/link ke notch, drag keluar lagi, thumbnail, buka/tampilkan di Explorer) ✅, pusat notifikasi (tab Notifikasi: notifikasi Windows per app + riwayat toast notch, toast di notch dengan ikon app, bisukan app) ✅.
-6. **Window pengaturan** ✅ (glass, sidebar kategori, dibuka dari tombol ⚙ di notch atau tray), updater, dan rilis.
+6. **Window pengaturan** ✅ (glass, sidebar kategori, dibuka dari tombol ⚙ di notch atau tray), updater ✅, dan rilis ✅.
+
+## Rilis
+
+1. Naikkan versi di `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, dan `package.json` (harus sama).
+2. Commit, lalu push tag versinya: `git tag v0.2.0` dan `git push origin v0.2.0`.
+3. GitHub Actions (`.github/workflows/release.yml`) mem-build installer NSIS, menandatangani file update, dan membuat **draft** di halaman Releases beserta `latest.json`.
+4. Periksa draft-nya lalu klik **Publish**. App yang sudah terpasang menemukan versi baru dalam beberapa jam (atau lewat Pengaturan → Tentang → Cek pembaruan).
+
+Updater butuh dua secret di repo (Settings → Secrets and variables → Actions):
+
+- `TAURI_SIGNING_PRIVATE_KEY`: isi file kunci privat (`~/.tauri/island-notch.key`). Simpan file itu baik-baik: tanpanya, versi baru tidak bisa dipasang lewat updater.
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: kosong (kuncinya dibuat tanpa password).
+
+Kunci publiknya ada di `tauri.conf.json` (`plugins.updater.pubkey`).
+
+## Pemakaian memori
+
+- Saat notch mengecil lebih dari 10 detik, WebView2 diminta memakai memori serendah mungkin (`MemoryUsageTargetLevel = Low`); begitu dibuka kembali normal.
+- Window pengaturan, mini player, teleprompter, dan overlay OCR dihancurkan setelah 45 detik tertutup, jadi tidak menahan proses renderer sendiri.
+- Thread hit-test membaca posisi kursor dan window lewat Win32 langsung dan melambat (60 ms) saat kursor jauh dari notch.

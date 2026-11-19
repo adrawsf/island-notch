@@ -106,6 +106,7 @@ pub fn ocr_snip_finish(app: AppHandle, rect: Option<Rect>) {
     let origin = w.inner_position().unwrap_or_default();
     let scale = w.scale_factor().unwrap_or(1.0);
     let _ = w.hide();
+    crate::window::release_when_idle(&app, LABEL);
     let Some(rect) = rect else { return };
     let region = (
         origin.x + (rect.x * scale).round() as i32,

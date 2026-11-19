@@ -34,6 +34,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .plugin(shortcut::plugin())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(hit_test::HitTestState::default())
         .manage(shell::ShellState::default())
         .manage(media::MediaStore::default())
@@ -117,6 +118,7 @@ pub fn run() {
             ocr::ocr_snip_finish,
             ocr::ocr_languages,
             window::reposition_main_window,
+            window::notch_memory_saver,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Island Notch");

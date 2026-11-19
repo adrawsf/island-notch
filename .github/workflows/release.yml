@@ -1,0 +1,49 @@
+# Builds the Windows installer when a version tag (v0.1.0, v0.2.0...) is
+# pushed, and creates a draft GitHub release with it plus `latest.json` for
+# the in-app updater. Publish the draft from the Releases page.
+#
+# Repository secrets needed (Settings → Secrets and variables → Actions):
+# - TAURI_SIGNING_PRIVATE_KEY: contents of the updater private key file
+# - TAURI_SIGNING_PRIVATE_KEY_PASSWORD: its password (empty if none)
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Island Notch ${{ github.ref_name }}
+          releaseBody: |
+            Unduh `Island Notch_*_x64-setup.exe` di bawah lalu jalankan.
+            Windows SmartScreen mungkin memperingatkan karena installer belum ditandatangani: klik "More info" → "Run anyway".
+          releaseDraft: true
+          includeUpdaterJson: true

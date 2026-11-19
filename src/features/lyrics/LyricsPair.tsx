@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { MediaState } from "../media/mediaBridge";
 import type { Lyrics } from "./types";
-import { useLyricPosition } from "./useLyrics";
-import { currentLineIndex } from "./lyricsText";
+import { useLyricLineIndex } from "./useLyrics";
 import { useRomanized } from "./romanize";
 
 /**
@@ -11,9 +10,8 @@ import { useRomanized } from "./romanize";
  * Before the first line it shows the first line as "next".
  */
 export function LyricsPair({ media, lyrics }: { media: MediaState; lyrics: Lyrics }) {
-  const position = useLyricPosition(media);
+  const index = useLyricLineIndex(media, lyrics.lines);
   const romanized = useRomanized(lyrics);
-  const index = currentLineIndex(lyrics.lines, position);
   const current = index >= 0 ? lyrics.lines[index].text : "";
   const currentRoma = index >= 0 ? romanized?.[index] : null;
   const nextIndex = lyrics.lines.findIndex((l, i) => i > index && l.text);

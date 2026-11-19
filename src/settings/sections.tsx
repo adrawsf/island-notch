@@ -35,6 +35,7 @@ import { AMBIENCE_SOUNDS } from "../features/pomodoro/ambience/sounds";
 import { listOcrLanguages, type OcrLanguage } from "../features/clipboard/clipboardBridge";
 import { openNotificationSettings } from "../features/notifications/notifBridge";
 import { prettyShortcut } from "../shared/format";
+import { checkForUpdate, installUpdate, useUpdateState } from "../core/update/updater";
 import { Stepper } from "../shared/ui/Stepper";
 import { Group, ReorderableToggles, Row, Segmented, Select, Slider, TextButton, Toggle } from "./controls";
 import { HomeSection } from "./HomeSection";
@@ -609,6 +610,7 @@ function AboutSection() {
           </span>
         </div>
       </Group>
+      <UpdateGroup />
       <Group title="Reset">
         <Row
           title="Kembalikan pengaturan ke default"
@@ -627,6 +629,35 @@ function AboutSection() {
         </Row>
       </Group>
     </>
+  );
+}
+
+function UpdateGroup() {
+  const update = useUpdateState();
+  const hint =
+    update.status === "checking"
+      ? "Mengecek…"
+      : update.status === "none"
+        ? "Sudah versi terbaru."
+        : update.status === "available"
+          ? `Versi ${update.version} tersedia.`
+          : update.status === "installing"
+            ? `Mengunduh pembaruan${update.percent !== null ? ` (${update.percent}%)` : ""}… Aplikasi akan memulai ulang.`
+            : update.status === "error"
+              ? `Gagal mengecek: ${update.message}`
+              : "Island Notch juga mengecek sendiri secara berkala.";
+  return (
+    <Group title="Pembaruan">
+      <Row title="Pembaruan aplikasi" hint={hint}>
+        {update.status === "available" ? (
+          <TextButton onClick={() => void installUpdate()}>Perbarui sekarang</TextButton>
+        ) : (
+          <TextButton onClick={() => void checkForUpdate()}>
+            {update.status === "checking" ? "Mengecek…" : "Cek pembaruan"}
+          </TextButton>
+        )}
+      </Row>
+    </Group>
   );
 }
 

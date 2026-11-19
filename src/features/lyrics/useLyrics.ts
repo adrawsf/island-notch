@@ -7,7 +7,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { useSettings } from "../../core/settings/useSettings";
 import { persistedValue } from "../../core/storage/persistedValue";
 import type { MediaState } from "../media/mediaBridge";
-import { useMediaPosition } from "../media/useMedia";
+import { useFromPosition, useMediaPosition } from "../media/useMedia";
+import { currentLineIndex } from "./lyricsText";
 import { findLyrics } from "./sources";
 import type { Lyrics, LyricsSource } from "./types";
 
@@ -126,6 +127,12 @@ export function setLyricsOffset(media: MediaState, offsetMs: number): void {
     const kept = entries.slice(Math.max(0, entries.length - (MAX_OFFSETS - 1)));
     return { ...Object.fromEntries(kept), [key]: next };
   });
+}
+
+/** Index of the line being sung (offset applied); re-renders only when it changes. */
+export function useLyricLineIndex(media: MediaState, lines: Lyrics["lines"]): number {
+  const offset = useLyricsOffset(media);
+  return useFromPosition(media, (position) => currentLineIndex(lines, position - offset));
 }
 
 /** Playback position as the lyrics should see it (offset applied). */

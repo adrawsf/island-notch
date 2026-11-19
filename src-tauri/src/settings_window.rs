@@ -1,7 +1,8 @@
 //! Settings window (`settings.html`).
 //!
 //! Frameless glass window, centered on the notch's monitor. Created on first
-//! open and hidden (not destroyed) on close, so reopening is instant. Unlike
+//! open and hidden on close, so reopening soon after is instant; destroyed
+//! after staying closed a while, to free its memory. Unlike
 //! the mini player it takes focus and shows in the taskbar while open.
 //!
 //! The settings themselves live in the frontend store; this module only owns
@@ -103,6 +104,7 @@ pub fn settings_open(app: AppHandle, section: Option<String>) {
 pub fn settings_close(app: AppHandle) -> Result<(), String> {
     if let Some(w) = window(&app) {
         w.hide().map_err(|e| e.to_string())?;
+        crate::window::release_when_idle(&app, LABEL);
     }
     Ok(())
 }
