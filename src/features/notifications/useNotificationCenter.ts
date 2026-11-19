@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { onToastAdded, showToast } from "../../core/toast/toastQueue";
 import { useSettings } from "../../core/settings/useSettings";
+import { useDndController } from "./dnd";
 import {
   configureNotifications,
   notificationIcon,
@@ -20,6 +21,9 @@ export function useNotificationCenter() {
   settingsRef.current = settings;
 
   useEffect(() => configureNotifications(settings.windowsNotifications), [settings.windowsNotifications]);
+
+  // Do not disturb (the notch's own, or Windows'): no toasts in the notch.
+  useDndController();
 
   useEffect(
     () =>

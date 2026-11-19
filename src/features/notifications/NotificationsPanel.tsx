@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, BellOff, ChevronDown, ShieldAlert, Sparkles, X } from "lucide-react";
+import { Bell, BellOff, ChevronDown, Moon, ShieldAlert, Sparkles, X } from "lucide-react";
 import type { TabPanelProps } from "../../app/tabs/types";
 import { updateSetting } from "../../core/settings/settings";
 import { useSettings } from "../../core/settings/useSettings";
@@ -15,6 +15,7 @@ import {
   useWindowsNotifications,
   type AccessStatus,
 } from "./notifBridge";
+import { DND_FOREVER, minutesUntilMorning, setNotchDnd, useDnd } from "./dnd";
 
 /** One row, from Windows or from the notch itself. */
 interface Row {
@@ -43,6 +44,7 @@ export default function NotificationsPanel(_props: TabPanelProps) {
   const { notificationMutedApps } = useSettings();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [confirmClear, setConfirmClear] = useState(false);
+  const [dndMenu, setDndMenu] = useState(false);
   const now = useNow(30_000).getTime();
 
   useEffect(() => {
@@ -101,6 +103,37 @@ export default function NotificationsPanel(_props: TabPanelProps) {
     );
   };
 
+  const notificationsList =
+    total === 0 ? (
+      <div className="flex h-[120px] flex-col items-center justify-center gap-1.5 text-center text-notch-muted">
+        <Bell size={22} />
+        <span className="text-[13px] font-semibold text-notch-fg">Belum ada notifikasi</span>
+        <span className="text-[11px]">Notifikasi dari aplikasi Windows dan dari notch muncul di sini.</span>
+      </div>
+    ) : (
+      <div className="flex max-h-[220px] flex-col gap-1.5 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
+        {sorted.map((g) => (
+          <GroupView
+            key={g.id}
+            group={g}
+            now={now}
+            collapsed={collapsed.has(g.id)}
+            muted={notificationMutedApps.some((m) => m.id === g.id)}
+            onToggle={() =>
+              setCollapsed((prev) => {
+                const next = new Set(prev);
+                if (next.has(g.id)) next.delete(g.id);
+                else next.add(g.id);
+                return next;
+              })
+            }
+            onMute={g.id === NOTCH_GROUP ? undefined : () => toggleMute(g)}
+            onClear={() => clearGroup(g)}
+          />
+        ))}
+      </div>
+    );
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex h-7 items-center gap-2 px-1">
@@ -108,7 +141,8 @@ export default function NotificationsPanel(_props: TabPanelProps) {
           {total === 0 ? "Notifikasi" : `${total} notifikasi`}
         </span>
         <span className="flex-1" />
-        {total > 0 && (
+        <DndButton open={dndMenu} onToggle={() => setDndMenu((o) => !o)} />
+        {total > 0 && !dndMenu && (
           <button
             type="button"
             onClick={() => {
@@ -126,37 +160,95 @@ export default function NotificationsPanel(_props: TabPanelProps) {
         )}
       </div>
 
-      {list && list.status !== "allowed" && <AccessBanner status={list.status} />}
-
-      {total === 0 ? (
-        <div className="flex h-[120px] flex-col items-center justify-center gap-1.5 text-center text-notch-muted">
-          <Bell size={22} />
-          <span className="text-[13px] font-semibold text-notch-fg">Belum ada notifikasi</span>
-          <span className="text-[11px]">Notifikasi dari aplikasi Windows dan dari notch muncul di sini.</span>
-        </div>
+      {dndMenu ? (
+        <DndOptions onPicked={() => setDndMenu(false)} />
       ) : (
-        <div className="flex max-h-[220px] flex-col gap-1.5 overflow-y-auto pr-0.5 [scrollbar-width:thin]">
-          {sorted.map((g) => (
-            <GroupView
-              key={g.id}
-              group={g}
-              now={now}
-              collapsed={collapsed.has(g.id)}
-              muted={notificationMutedApps.some((m) => m.id === g.id)}
-              onToggle={() =>
-                setCollapsed((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(g.id)) next.delete(g.id);
-                  else next.add(g.id);
-                  return next;
-                })
-              }
-              onMute={g.id === NOTCH_GROUP ? undefined : () => toggleMute(g)}
-              onClear={() => clearGroup(g)}
-            />
-          ))}
-        </div>
+        <>
+          {list && list.status !== "allowed" && <AccessBanner status={list.status} />}
+          {notificationsList}
+        </>
       )}
+    </div>
+  );
+}
+
+function DndButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const dnd = useDnd();
+  const label = dnd.notch
+    ? dnd.until === DND_FOREVER
+      ? "Jangan ganggu"
+      : `Jangan ganggu s/d ${new Date(dnd.until).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`
+    : dnd.quiet
+      ? "Jangan ganggu (Windows)"
+      : "Jangan ganggu";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className={`flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors ${
+        dnd.quiet ? "bg-indigo-500/85 text-white" : "glass-button"
+      }`}
+      data-tip={dnd.quiet ? "Notifikasi tetap tercatat di sini, tapi tidak muncul di notch" : "Atur Jangan ganggu"}
+    >
+      <Moon size={12} fill={dnd.quiet ? "currentColor" : "none"} />
+      {label}
+      <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+    </button>
+  );
+}
+
+function DndOptions({ onPicked }: { onPicked: () => void }) {
+  const dnd = useDnd();
+  const { followWindowsDnd } = useSettings();
+  const pick = (minutes: number | "forever") => {
+    setNotchDnd(minutes);
+    onPicked();
+  };
+  const option = (label: string, minutes: number | "forever") => (
+    <button
+      type="button"
+      onClick={() => pick(minutes)}
+      className="glass-button flex h-9 items-center justify-center rounded-xl px-3 text-xs font-semibold"
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="flex flex-col gap-2.5 px-0.5 pb-1">
+      <span className="px-1 text-[11.5px] leading-snug text-notch-muted">
+        Selama Jangan ganggu, notifikasi tidak muncul di notch. Semuanya tetap tercatat di tab ini.
+      </span>
+      <div className="grid grid-cols-4 gap-1.5">
+        {option("1 jam", 60)}
+        {option("3 jam", 180)}
+        {option("Sampai besok pagi", minutesUntilMorning())}
+        {option("Sampai dimatikan", "forever")}
+      </div>
+      {dnd.notch && (
+        <button
+          type="button"
+          onClick={() => pick(0)}
+          className="flex h-9 items-center justify-center rounded-xl bg-indigo-500/85 text-xs font-semibold text-white"
+        >
+          Matikan Jangan ganggu
+        </button>
+      )}
+      <label className="glass-well flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[12.5px] font-semibold">Ikuti Jangan Ganggu Windows</span>
+          <span className="text-[11px] text-notch-muted">
+            Juga diam saat Jangan Ganggu atau sesi Fokus Windows menyala
+            {dnd.windows ? " (sekarang menyala)" : ""}.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={followWindowsDnd}
+          onChange={(e) => updateSetting("followWindowsDnd", e.target.checked)}
+          className="h-4 w-4 shrink-0 accent-indigo-500"
+        />
+      </label>
     </div>
   );
 }

@@ -35,10 +35,24 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
+/** Windows' "Do not disturb" is on: toasts are recorded but not shown. */
+let quiet = false;
+
+export function setToastsQuiet(next: boolean): void {
+  if (quiet === next) return;
+  quiet = next;
+  if (quiet && queue.length > 0) {
+    queue = [];
+    emit();
+  }
+}
+
 export function showToast({ durationMs = DEFAULT_DURATION_MS, source = "notch", ...rest }: ToastInput): number {
   const toast: NotchToast = { id: nextId++, durationMs, source, ...rest };
-  queue = [...queue, toast].slice(-MAX_QUEUE);
-  emit();
+  if (!quiet) {
+    queue = [...queue, toast].slice(-MAX_QUEUE);
+    emit();
+  }
   addedListeners.forEach((l) => l(toast));
   return toast.id;
 }

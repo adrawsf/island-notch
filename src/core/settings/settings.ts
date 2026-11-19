@@ -101,6 +101,10 @@ export interface AppSettings {
   notificationToasts: boolean;
   /** Apps whose notifications never pop up in the notch (still listed). */
   notificationMutedApps: MutedApp[];
+  /** Notch's own Do not disturb: 0 off, -1 until turned off, else until this time (ms). */
+  notchDndUntil: number;
+  /** Windows' Do not disturb (and Focus) also silences the notch. */
+  followWindowsDnd: boolean;
   /** Home tab cards shown, in order (see src/features/home/homeCards.ts). */
   homeCards: string[];
   /** Size of the big clock on the home tab. */
@@ -203,6 +207,8 @@ const SCHEMA: { [K in keyof AppSettings]: { default: AppSettings[K]; valid: Vali
   windowsNotifications: { default: true, valid: isBoolean },
   notificationToasts: { default: true, valid: isBoolean },
   notificationMutedApps: { default: [], valid: isMutedAppList },
+  notchDndUntil: { default: 0, valid: (v): v is number => typeof v === "number" && Number.isFinite(v) },
+  followWindowsDnd: { default: true, valid: isBoolean },
   homeCards: { default: ["clock", "worldClocks", "image", "pet"], valid: isIdList },
   clockSize: { default: "medium", valid: oneOf("small", "medium", "large") },
   worldClocks: { default: [], valid: isZoneList },

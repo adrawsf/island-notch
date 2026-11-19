@@ -53,6 +53,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             hit_test::set_hit_region,
             foreground::notch_compact_state,
+            foreground::notch_toast_peek,
             shell::apply_shell_config,
             shell::shell_status,
             settings_window::settings_open,
@@ -97,6 +98,7 @@ pub fn run() {
             notifications::notif_open_app,
             notifications::notif_open_settings,
             notifications::notif_icon,
+            notifications::notif_dnd_active,
             shelf::shelf_list,
             shelf::shelf_remove,
             shelf::shelf_clear,

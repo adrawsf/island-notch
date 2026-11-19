@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MicOff } from "lucide-react";
-import { isTauri } from "@tauri-apps/api/core";
+import { MicOff, Moon } from "lucide-react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { reportHitRegion } from "../core/notch/notchBridge";
 import type { NotchSize } from "../core/settings/settings";
 import { useSettings } from "../core/settings/useSettings";
@@ -15,6 +15,7 @@ import { usePomodoro } from "../features/pomodoro/pomodoroStore";
 import { setPrompterInNotch, usePrompterInNotch } from "../features/teleprompter/notchPrompter";
 import { useMicMuted } from "../features/sound/mixerBridge";
 import { onShelfDrag } from "../features/shelf/shelfBridge";
+import { useDnd } from "../features/notifications/dnd";
 import { DEFAULT_TAB_WIDTH, preloadPanels } from "./tabs/registry";
 import type { TabSize } from "./tabs/types";
 import { useNotchController } from "./useNotchController";
@@ -70,6 +71,8 @@ export function NotchShell() {
   const prompterInNotch = usePrompterInNotch();
   // A muted microphone shows at the end of the pill.
   const micBadge = useMicMuted() === true && idle !== "handle";
+  // So is Do not disturb.
+  const dndBadge = useDnd().quiet && idle !== "handle";
   const notch = useNotchController({
     suppressHoverOpen: toast !== null,
     wheelPill: idle === "media" || idle === "widget",
@@ -99,7 +102,7 @@ export function NotchShell() {
       ? `tab:${notch.activeTab.id}`
       : view === "toast"
         ? "toast"
-        : `idle:${idle}${micBadge ? ":mic" : ""}`;
+        : `idle:${idle}${micBadge ? ":mic" : ""}${dndBadge ? ":dnd" : ""}`;
 
   // Natural size of each view's content, reported by <Measure>.
   const [sizes, setSizes] = useState<Record<string, TabSize>>({});
@@ -119,6 +122,14 @@ export function NotchShell() {
   const topGap = island && !handle ? ISLAND_TOP_GAP : 0;
   // Capsule when collapsed; rounder corners as it grows.
   const radius = view === "expanded" ? 28 : view === "toast" ? 24 : size.height / 2;
+
+  // While a full screen app has the notch hidden, show it just for the toast.
+  const showingToast = view === "toast";
+  useEffect(() => {
+    if (!IN_TAURI || !showingToast) return;
+    invoke("notch_toast_peek", { active: true }).catch(() => {});
+    return () => void invoke("notch_toast_peek", { active: false }).catch(() => {});
+  }, [showingToast]);
 
   // Auto-dismiss the visible toast.
   useEffect(() => {
@@ -236,6 +247,15 @@ export function NotchShell() {
                         data-tip="Mikrofon dibisukan"
                       >
                         <MicOff size={13} />
+                      </span>
+                    )}
+                    {dndBadge && (
+                      <span
+                        className={`${micBadge ? "-ml-1" : "-ml-1.5"} mr-3 flex h-8 shrink-0 items-center text-indigo-300`}
+                        aria-label="Jangan ganggu menyala"
+                        data-tip="Jangan ganggu menyala"
+                      >
+                        <Moon size={12} fill="currentColor" />
                       </span>
                     )}
                   </div>

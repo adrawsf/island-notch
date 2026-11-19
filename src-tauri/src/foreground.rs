@@ -20,7 +20,34 @@ const FS_NONE: u8 = 0;
 const FS_HIDDEN: u8 = 1;
 /// The user brought it back during full screen; leave it alone until it ends.
 const FS_USER: u8 = 2;
+/// Shown for a moment over the full screen app to show a toast; hidden again after it.
+const FS_PEEK: u8 = 3;
 static FULLSCREEN_STATE: AtomicU8 = AtomicU8::new(FS_NONE);
+
+/// A notification toast starts (`true`) or ends (`false`). While the notch is
+/// hidden for a full screen app, it is shown just for the toast.
+#[tauri::command]
+pub fn notch_toast_peek(app: AppHandle, active: bool) {
+    #[cfg(windows)]
+    {
+        let Some(notch) = crate::window::main_window(&app) else { return };
+        if active {
+            if FULLSCREEN_STATE
+                .compare_exchange(FS_HIDDEN, FS_PEEK, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
+                win::set_shown(&notch, true);
+            }
+        } else if FULLSCREEN_STATE
+            .compare_exchange(FS_PEEK, FS_HIDDEN, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+        {
+            win::set_shown(&notch, false);
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = (app, active);
+}
 
 /// Last foreground window of another app (HWND as isize, 0 = none yet).
 static LAST_EXTERNAL: AtomicIsize = AtomicIsize::new(0);
@@ -38,6 +65,7 @@ pub fn last_external_window() -> Option<isize> {
 /// full screen app: keep it shown for the rest of that full screen session.
 pub fn user_shown() {
     let _ = FULLSCREEN_STATE.compare_exchange(FS_HIDDEN, FS_USER, Ordering::SeqCst, Ordering::SeqCst);
+    let _ = FULLSCREEN_STATE.compare_exchange(FS_PEEK, FS_USER, Ordering::SeqCst, Ordering::SeqCst);
 }
 
 fn hide_in_fullscreen_enabled(app: &AppHandle) -> bool {
@@ -88,11 +116,25 @@ pub fn start(app: AppHandle) {
     });
 }
 
+/// The mini player was hidden for a full screen app (shown again after it).
+static MINI_HIDDEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 #[cfg(windows)]
 fn update_fullscreen(app: &AppHandle, notch: &tauri::WebviewWindow, fullscreen: bool) {
+    // The floating mini player (lyrics) gets out of the way too.
+    if let Some(mini) = crate::miniplayer::window(app) {
+        if fullscreen && !MINI_HIDDEN.load(Ordering::SeqCst) && mini.is_visible().unwrap_or(false) {
+            win::set_shown(&mini, false);
+            MINI_HIDDEN.store(true, Ordering::SeqCst);
+        } else if !fullscreen && MINI_HIDDEN.swap(false, Ordering::SeqCst) {
+            win::set_shown(&mini, true);
+        }
+    }
+
     let state = FULLSCREEN_STATE.load(Ordering::SeqCst);
     if fullscreen {
         // A notch the user hid from the tray stays as it is (FS_NONE, not visible).
+        // FS_PEEK: a toast is showing over it; `notch_toast_peek` hides it after.
         if state == FS_NONE && notch.is_visible().unwrap_or(false) {
             win::set_shown(notch, false);
             FULLSCREEN_STATE.store(FS_HIDDEN, Ordering::SeqCst);
