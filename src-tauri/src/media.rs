@@ -66,6 +66,14 @@ impl MediaStore {
     }
 }
 
+/// Whether two titles name the same track, allowing for extras like
+/// "Artist - " in tab names ("Artist - Song" vs "Song").
+pub(crate) fn same_title(a: &str, b: &str) -> bool {
+    let norm = |s: &str| s.to_lowercase().chars().filter(|c| c.is_alphanumeric()).collect::<String>();
+    let (a, b) = (norm(a), norm(b));
+    !a.is_empty() && !b.is_empty() && (a.contains(&b) || b.contains(&a))
+}
+
 /// Latest state, for a frontend that (re)loads after the last event.
 #[tauri::command]
 pub fn media_get_state(store: State<'_, MediaStore>) -> MediaState {
@@ -119,7 +127,16 @@ mod smtc {
             .iter()
             .filter(|s| status(s) != Status::Closed && !is_ignored(s, skip_video))
             .collect();
-        if let Some(s) = candidates.iter().find(|s| status(s) == Status::Playing) {
+        // Several playing (music on, a video started next to it): a dedicated
+        // player (Spotify, Apple Music...) is music, then keep the one shown
+        // so far, so clicking a video does not take the notch from the song.
+        let playing: Vec<&Session> = candidates.iter().copied().filter(|s| status(s) == Status::Playing).collect();
+        if let Some(s) = playing
+            .iter()
+            .find(|s| !is_browser_id(&app_id(s).to_lowercase()))
+            .or_else(|| playing.iter().find(|s| !last_app_id.is_empty() && app_id(s) == last_app_id))
+            .or_else(|| playing.first())
+        {
             return Some((*s).clone());
         }
         if !last_app_id.is_empty() {
@@ -192,6 +209,25 @@ mod smtc {
             .map(|a| a.to_string())
             .unwrap_or_default();
         artist.trim().is_empty()
+    }
+
+    /// Whether the session belongs to a browser.
+    pub fn is_browser(session: &Session) -> bool {
+        is_browser_id(&app_id(session).to_lowercase())
+    }
+
+    /// A playing session of `app_id` (any case) showing `title`, if Windows has one.
+    pub fn playing_session_with(manager: &Manager, app: &str, title: &str) -> Option<Session> {
+        let sessions = manager.GetSessions().ok()?;
+        sessions.into_iter().find(|s| {
+            status(s) == Status::Playing
+                && app_id(s).eq_ignore_ascii_case(app)
+                && s.TryGetMediaPropertiesAsync()
+                    .and_then(|op| op.get())
+                    .and_then(|p| p.Title())
+                    .map(|t| super::same_title(&t.to_string(), title))
+                    .unwrap_or(false)
+        })
     }
 
     pub fn app_id(session: &Session) -> String {
@@ -308,6 +344,9 @@ pub fn start(app: AppHandle) {
         const TAB_SCAN_EVERY: u32 = 6;
         let mut tab_scan_ticks = TAB_SCAN_EVERY;
         let mut tab_state: Option<MediaState> = None;
+        // A music tab playing while the browser reports another tab (a video).
+        let mut browser_scan_ticks = TAB_SCAN_EVERY;
+        let mut music_tab: Option<crate::media_source::MusicTab> = None;
 
         loop {
             std::thread::sleep(POLL_INTERVAL);
@@ -316,11 +355,49 @@ pub fn start(app: AppHandle) {
             }
             let Some(mgr) = &manager else { continue };
 
-            let session = smtc::pick_session(mgr, &last_emitted.app_id, ignore_video(&app));
+            let mut session = smtc::pick_session(mgr, &last_emitted.app_id, ignore_video(&app));
             let mut state = match session.as_ref().and_then(smtc::read_state) {
                 Some(s) => s,
                 None => MediaState { sampled_at_ms: smtc::now_ms(), ..Default::default() },
             };
+
+            // A browser tells Windows only about the tab used last: with music
+            // in one tab and a video clicked in another, that is the video.
+            // When a music tab is audibly playing elsewhere, show that instead.
+            if state.active && session.as_ref().is_some_and(smtc::is_browser) {
+                browser_scan_ticks += 1;
+                if browser_scan_ticks >= TAB_SCAN_EVERY {
+                    browser_scan_ticks = 0;
+                    music_tab = crate::media_source::find_music_tab().filter(|t| !same_title(&t.title, &state.title));
+                }
+                if let Some(tab) = &music_tab {
+                    // The music may be in another browser that Windows does report.
+                    let other = smtc::playing_session_with(mgr, &tab.app_id, &tab.title);
+                    match other.as_ref().and_then(smtc::read_state) {
+                        Some(s) => {
+                            state = s;
+                            session = other;
+                        }
+                        None => {
+                            state = MediaState {
+                                sampled_at_ms: state.sampled_at_ms,
+                                active: true,
+                                app_id: tab.app_id.clone(),
+                                title: tab.title.clone(),
+                                artist: tab.artist.clone(),
+                                is_playing: true,
+                                tab_only: true,
+                                ..Default::default()
+                            };
+                            // Its cover is not the video's.
+                            session = None;
+                        }
+                    }
+                }
+            } else {
+                browser_scan_ticks = TAB_SCAN_EVERY;
+                music_tab = None;
+            }
 
             // Chrome reports only its most recently used media to Windows, so
             // music in one tab disappears once a film in another was clicked.
