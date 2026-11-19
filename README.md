@@ -88,10 +88,11 @@ src-tauri/src/
 3. GitHub Actions (`.github/workflows/release.yml`) mem-build installer NSIS, menandatangani file update, dan membuat **draft** di halaman Releases beserta `latest.json`.
 4. Periksa draft-nya lalu klik **Publish**. App yang sudah terpasang menemukan versi baru dalam beberapa jam (atau lewat Pengaturan → Tentang → Cek pembaruan).
 
-Updater butuh dua secret di repo (Settings → Secrets and variables → Actions):
+Updater butuh satu secret di repo (Settings → Secrets and variables → Actions):
 
 - `TAURI_SIGNING_PRIVATE_KEY`: isi file kunci privat (`~/.tauri/island-notch.key`). Simpan file itu baik-baik: tanpanya, versi baru tidak bisa dipasang lewat updater.
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: kosong (kuncinya dibuat tanpa password).
+
+Kuncinya tanpa password; password kosongnya sudah diisi di workflow.
 
 Kunci publiknya ada di `tauri.conf.json` (`plugins.updater.pubkey`).
 

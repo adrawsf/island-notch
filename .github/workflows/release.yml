@@ -4,7 +4,7 @@
 #
 # Repository secrets needed (Settings → Secrets and variables → Actions):
 # - TAURI_SIGNING_PRIVATE_KEY: contents of the updater private key file
-# - TAURI_SIGNING_PRIVATE_KEY_PASSWORD: its password (empty if none)
+# The key has no password (GitHub does not allow an empty secret, so it is set here).
 name: Release
 
 on:
@@ -38,7 +38,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Island Notch ${{ github.ref_name }}
