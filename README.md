@@ -105,4 +105,5 @@ Kunci publiknya ada di `tauri.conf.json` (`plugins.updater.pubkey`).
 
 - Saat notch mengecil lebih dari 10 detik, WebView2 diminta memakai memori serendah mungkin (`MemoryUsageTargetLevel = Low`); begitu dibuka kembali normal.
 - Window pengaturan, mini player, teleprompter, dan overlay OCR dihancurkan setelah 45 detik tertutup, jadi tidak menahan proses renderer sendiri.
+- WebView2 menggambar notch dengan CPU (`--disable-gpu-rasterization`) dan memori GPU dibatasi 64 MB: untuk UI sekecil ini jauh lebih hemat (±145 MB RAM total, dari ±450 MB).
 - Thread hit-test membaca posisi kursor dan window lewat Win32 langsung dan melambat (60 ms) saat kursor jauh dari notch.

@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize
 /// environment per process, and a window created with different args fails with
 /// HRESULT 0x8007139F. Keep this in sync with `tauri.conf.json`.
 pub const WEBVIEW_BROWSER_ARGS: &str =
-    "--autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --disable-features=CalculateNativeWinOcclusion";
+    "--autoplay-policy=no-user-gesture-required --disable-gpu-rasterization --force-gpu-mem-available-mb=64 --disable-features=CalculateNativeWinOcclusion";
 
 pub const MAIN_WINDOW_LABEL: &str = "main";
 

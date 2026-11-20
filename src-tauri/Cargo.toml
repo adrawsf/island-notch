@@ -1,6 +1,6 @@
 [package]
 name = "island-notch"
-version = "0.1.0"
+version = "0.1.1"
 description = "Dynamic-island style notch for Windows"
 edition = "2021"
 default-run = "island-notch"
