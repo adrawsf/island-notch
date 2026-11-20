@@ -611,7 +611,9 @@ mod win {
 
     struct Proc {
         pid: u32,
-        path: String,
+        /// The app this process belongs to: its own exe, or for a WebView2
+        /// helper, the exe of the app that started it.
+        owner: String,
         cpu_time: u64,
         memory: u64,
     }
@@ -623,21 +625,26 @@ mod win {
         use windows::Win32::System::ProcessStatus::{
             GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX2,
         };
-        let own = std::process::id();
-        let mut pids = Vec::new();
+        // pid -> (parent pid, exe file name in lowercase)
+        let mut tree: HashMap<u32, (u32, String)> = HashMap::new();
         unsafe {
             let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return Vec::new() };
             let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
             let mut ok = Process32FirstW(snapshot, &mut entry).is_ok();
             while ok {
-                if entry.th32ProcessID > 4 && entry.th32ProcessID != own {
-                    pids.push(entry.th32ProcessID);
+                if entry.th32ProcessID > 4 {
+                    let name = wide_str(&entry.szExeFile).to_lowercase();
+                    tree.insert(entry.th32ProcessID, (entry.th32ParentProcessID, name));
                 }
                 ok = Process32NextW(snapshot, &mut entry).is_ok();
             }
             let _ = CloseHandle(snapshot);
         }
-        pids.into_iter()
+        let mut owner_paths: HashMap<u32, String> = HashMap::new();
+        tree.keys()
+            .copied()
+            .collect::<Vec<_>>()
+            .into_iter()
             .filter_map(|pid| unsafe {
                 let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
                 let (mut created, mut exited, mut kernel, mut user) =
@@ -661,9 +668,37 @@ mod win {
                 };
                 let _ = CloseHandle(process);
                 let path = crate::process::exe_path(pid);
-                (times && !path.is_empty()).then(|| Proc { pid, path, cpu_time: ticks(kernel) + ticks(user), memory })
+                if !times || path.is_empty() {
+                    return None;
+                }
+                let root = owner_pid(&tree, pid);
+                let owner = if root == pid {
+                    path.clone()
+                } else {
+                    owner_paths.entry(root).or_insert_with(|| crate::process::exe_path(root)).clone()
+                };
+                let owner = if owner.is_empty() { path.clone() } else { owner };
+                Some(Proc { pid, owner, cpu_time: ticks(kernel) + ticks(user), memory })
             })
             .collect()
+    }
+
+    /// Helper processes that belong to the app that started them, so Task
+    /// Manager style grouping counts them under that app instead of lumping
+    /// every app's WebView2 together.
+    const HELPERS: &[&str] = &["msedgewebview2.exe"];
+
+    /// Walks up from a helper process to the first ancestor that is not one.
+    fn owner_pid(tree: &HashMap<u32, (u32, String)>, pid: u32) -> u32 {
+        let mut current = pid;
+        for _ in 0..8 {
+            let Some((parent, name)) = tree.get(&current) else { break };
+            if !HELPERS.contains(&name.as_str()) || !tree.contains_key(parent) {
+                break;
+            }
+            current = *parent;
+        }
+        current
     }
 
     /// CPU time per pid at the previous listing.
@@ -692,11 +727,11 @@ mod win {
 
         let mut apps: HashMap<String, AppUsage> = HashMap::new();
         for p in procs {
-            let key = p.path.to_lowercase();
+            let key = p.owner.to_lowercase();
             let cpu = previous.get(&p.pid).map(|&t| p.cpu_time.saturating_sub(t) as f64 / elapsed / cores * 100.0);
             let app = apps.entry(key.clone()).or_insert_with(|| AppUsage {
-                name: crate::mixer::app_name(&p.path),
-                exe_path: p.path.clone(),
+                name: crate::mixer::app_name(&p.owner),
+                exe_path: p.owner.clone(),
                 can_end: !protected(&key),
                 key,
                 ..Default::default()
@@ -726,7 +761,7 @@ mod win {
         }
         let mut ended = 0;
         let mut failed = 0;
-        for p in processes().into_iter().filter(|p| p.path.to_lowercase() == key) {
+        for p in processes().into_iter().filter(|p| p.owner.to_lowercase() == key) {
             unsafe {
                 let Ok(process): windows::core::Result<HANDLE> = OpenProcess(PROCESS_TERMINATE, false, p.pid) else {
                     failed += 1;
