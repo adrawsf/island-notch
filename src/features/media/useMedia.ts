@@ -3,7 +3,9 @@
  * One Tauri subscription for the whole app, started on first use.
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { EMPTY_MEDIA, getMediaState, onMediaState, type MediaState } from "./mediaBridge";
+import { DEMO_MEDIA_ENABLED, demoMedia } from "./demoMedia";
 
 let current: MediaState = EMPTY_MEDIA;
 let started = false;
@@ -17,6 +19,10 @@ function set(next: MediaState) {
 function start() {
   if (started) return;
   started = true;
+  if (!isTauri() && DEMO_MEDIA_ENABLED) {
+    set(demoMedia());
+    return;
+  }
   onMediaState(set);
   // Catch up on state emitted before this webview loaded (or after HMR).
   getMediaState().then((s) => {

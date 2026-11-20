@@ -96,6 +96,11 @@ Kuncinya tanpa password; password kosongnya sudah diisi di workflow.
 
 Kunci publiknya ada di `tauri.conf.json` (`plugins.updater.pubkey`).
 
+## Situs
+
+- Landing page ada di `docs/` (GitHub Pages: Settings → Pages → Deploy from a branch → `main` / `/docs`).
+- Screenshot fiturnya dibuat otomatis dari mode browser (data contoh): jalankan `npx vite --port 1499 --strictPort`, lalu `node scripts/screenshots.mjs` dan `node scripts/to-webp.mjs`.
+
 ## Pemakaian memori
 
 - Saat notch mengecil lebih dari 10 detik, WebView2 diminta memakai memori serendah mungkin (`MemoryUsageTargetLevel = Low`); begitu dibuka kembali normal.

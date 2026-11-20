@@ -42,7 +42,12 @@ async function tryProvider(provider: LyricsProvider, track: CleanTrack): Promise
 }
 
 export async function findLyrics(track: TrackQuery, source: LyricsSource): Promise<Lyrics | null> {
-  if (!isTauri()) return null;
+  if (!isTauri()) {
+    if (!import.meta.env.DEV) return null;
+    // Plain browser (`npm run dev`): the demo track's lyrics.
+    const { DEMO_LYRICS } = await import("../media/demoMedia");
+    return DEMO_LYRICS;
+  }
   const cleaned = clean(track);
   if (!cleaned) return null;
 
