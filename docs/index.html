@@ -3,439 +3,423 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Island Notch — Dynamic Island untuk Windows</title>
-  <meta name="description" content="Island Notch mengubah bagian atas layar Windows-mu jadi pusat kendali: musik dengan lirik sinkron, notifikasi, volume per aplikasi, monitor sistem, catatan, clipboard, dan banyak lagi." />
-  <meta property="og:title" content="Island Notch — Dynamic Island untuk Windows" />
-  <meta property="og:description" content="Musik dengan lirik sinkron, notifikasi, volume per aplikasi, monitor sistem, catatan, dan banyak lagi — semuanya di notch." />
+  <title>Island Notch · Dynamic Island untuk Windows</title>
+  <meta name="description" content="Island Notch mengubah bagian atas layar Windows jadi pusat kendali: lagu dengan lirik sinkron, notifikasi, volume per aplikasi, monitor sistem, catatan, clipboard, dan lainnya." />
+  <meta property="og:title" content="Island Notch · Dynamic Island untuk Windows" />
+  <meta property="og:description" content="Lagu dengan lirik sinkron, notifikasi, volume per aplikasi, monitor sistem, dan catatan, semuanya di notch." />
   <meta property="og:image" content="shots/tab-media-lyrics.webp" />
-  <meta name="theme-color" content="#07060b" />
+  <meta name="theme-color" content="#1e3236" />
   <link rel="icon" href="icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #07060b;
-      --fg: #f5f3fa;
-      --muted: rgba(245, 243, 250, 0.62);
-      --faint: rgba(245, 243, 250, 0.1);
-      --accent: #ff8a3d;
-      --accent-2: #e2416b;
-      --accent-3: #7b5cff;
-      --radius: 28px;
-      --max: 1180px;
+      --ink: #eaf2f2;
+      --soft: rgba(234, 242, 242, 0.7);
+      --dim: rgba(234, 242, 242, 0.48);
+      --line: rgba(255, 255, 255, 0.14);
+      --sun: #f5c518;
+      --sun-ink: #1d1a08;
+      --tint: #6fa3b1;
+      --max: 1240px;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      background: #1e3236;
+      color: var(--ink);
+      font-family: "Exo 2", "Segoe UI", system-ui, sans-serif;
+      font-weight: 400;
       font-size: 17px;
       line-height: 1.6;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
     img { display: block; max-width: 100%; height: auto; }
-    a { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; }
 
-    /* ---------- Background: drifting aurora, grain, cursor light ---------- */
-    .aurora { position: fixed; inset: -20vmax; z-index: -3; pointer-events: none; filter: blur(70px) saturate(130%); opacity: 0.55; }
-    .aurora span { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; mix-blend-mode: screen; animation: drift 28s ease-in-out infinite alternate; }
-    .aurora span:nth-child(1) { background: radial-gradient(circle, #ff8a3d 0%, transparent 60%); left: 5%; top: 0%; }
-    .aurora span:nth-child(2) { background: radial-gradient(circle, #e2416b 0%, transparent 60%); right: 0%; top: 15%; animation-duration: 34s; animation-delay: -8s; }
-    .aurora span:nth-child(3) { background: radial-gradient(circle, #5b3dff 0%, transparent 60%); left: 25%; bottom: -10%; animation-duration: 40s; animation-delay: -16s; }
-    @keyframes drift {
-      0% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(8vmax, 6vmax) scale(1.15); }
-      100% { transform: translate(-6vmax, -4vmax) scale(0.95); }
+    /* ---------- Wallpaper: the thing the glass refracts ---------- */
+    .wall { position: fixed; inset: 0; z-index: -2; pointer-events: none; overflow: hidden;
+      background:
+        radial-gradient(70% 55% at 72% 18%, rgba(152, 190, 196, 0.42), transparent 70%),
+        radial-gradient(55% 50% at 12% 70%, rgba(86, 128, 132, 0.5), transparent 70%),
+        radial-gradient(60% 45% at 90% 95%, rgba(196, 186, 150, 0.16), transparent 70%),
+        linear-gradient(180deg, #3d5d64 0%, #24393e 48%, #142225 100%); }
+    .wall i { position: absolute; border-radius: 50%; filter: blur(2px); }
+    .wall i:nth-child(1) { width: 46vmax; height: 46vmax; right: -12vmax; top: -14vmax; background: radial-gradient(circle at 35% 35%, rgba(214, 232, 230, 0.32), rgba(110, 160, 168, 0.08) 60%, transparent 70%); }
+    .wall i:nth-child(2) { width: 30vmax; height: 30vmax; left: -8vmax; top: 48vh; background: radial-gradient(circle at 60% 40%, rgba(130, 176, 172, 0.3), transparent 68%); }
+    .wall i:nth-child(3) { width: 22vmax; height: 22vmax; left: 46vw; top: 140vh; background: radial-gradient(circle, rgba(245, 197, 24, 0.12), transparent 66%); }
+    /* Fine horizontal lines, like a TV panel */
+    .lines { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.5;
+      background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px); }
+
+    /* ---------- Liquid glass ---------- */
+    .glass {
+      position: relative;
+      background: linear-gradient(165deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.08));
+      backdrop-filter: blur(26px) saturate(160%);
+      -webkit-backdrop-filter: blur(26px) saturate(160%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.32),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 24px rgba(255, 255, 255, 0.04),
+        0 24px 60px -28px rgba(4, 14, 16, 0.75);
     }
-    .vignette { position: fixed; inset: 0; z-index: -2; pointer-events: none; background: radial-gradient(ellipse at 50% 0%, transparent 0%, rgba(7, 6, 11, 0.55) 55%, var(--bg) 100%); }
-    .grain { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0.06; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-    .cursor-light { position: fixed; z-index: -1; width: 520px; height: 520px; margin: -260px 0 0 -260px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 138, 61, 0.14), transparent 60%); transform: translate3d(var(--mx, 50vw), var(--my, 30vh), 0); transition: opacity 0.4s; }
+    /* A brighter rim that catches light on the top-left and bottom-right */
+    .glass::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none;
+      background: linear-gradient(140deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.08) 32%, rgba(255, 255, 255, 0.03) 62%, rgba(255, 255, 255, 0.34));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+    }
+    .well {
+      background: rgba(8, 20, 22, 0.32);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 -1px 0 rgba(255, 255, 255, 0.07);
+    }
 
     /* ---------- Top bar ---------- */
-    .topbar { position: fixed; top: 16px; left: 50%; z-index: 40; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 16px; border-radius: 999px; background: rgba(18, 16, 24, 0.62); border: 1px solid var(--faint); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); transition: transform 0.5s cubic-bezier(.2,.8,.2,1), opacity 0.5s; white-space: nowrap; }
-    .topbar.hidden { transform: translate(-50%, -140%); opacity: 0; }
-    .topbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; text-decoration: none; margin-right: 8px; }
-    .topbar .brand img { width: 24px; height: 24px; border-radius: 7px; }
-    .topbar nav a { padding: 8px 12px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); text-decoration: none; transition: color .2s, background .2s; }
-    .topbar nav a:hover { color: var(--fg); background: var(--faint); }
+    .top { position: sticky; top: 0; z-index: 30; padding: 18px 20px 0; }
+    .bar { max-width: var(--max); margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+    .dock { display: flex; align-items: center; gap: 14px; padding: 7px; border-radius: 999px; }
+    .round { position: relative; display: grid; place-items: center; width: 50px; height: 50px; flex: none; border-radius: 50%; border: 0; cursor: pointer; }
+    .round svg { width: 20px; height: 20px; }
+    .brand { display: flex; align-items: center; gap: 10px; padding-right: 4px; font-size: 21px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+    .brand img { width: 26px; height: 26px; border-radius: 8px; }
+    .brand b { font-weight: 500; color: var(--sun); }
+    .seg { display: flex; gap: 2px; padding: 5px; border-radius: 999px; }
+    .seg a { position: relative; padding: 8px 20px; border-radius: 999px; font-size: 16px; color: var(--soft); transition: color 0.2s; }
+    .seg a:hover { color: var(--ink); }
+    .seg a.on { color: #fff; background: linear-gradient(180deg, rgba(126, 178, 194, 0.7), rgba(86, 138, 154, 0.55)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 4px 14px -6px rgba(0, 0, 0, 0.5); }
+    .bar .spacer { flex: 1; }
+    .today { font-size: 16px; color: var(--soft); white-space: nowrap; }
 
     /* ---------- Buttons ---------- */
-    .btn { position: relative; display: inline-flex; align-items: center; gap: 10px; padding: 16px 26px; border-radius: 999px; font-weight: 700; font-size: 16px; text-decoration: none; border: 0; cursor: pointer; transition: transform 0.25s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s; will-change: transform; }
-    .btn svg { width: 20px; height: 20px; flex: none; }
-    .btn-primary { color: #170a03; background: linear-gradient(135deg, #ffb36b, var(--accent) 45%, var(--accent-2)); box-shadow: 0 10px 40px -10px rgba(255, 120, 60, 0.75), inset 0 1px 0 rgba(255,255,255,.5); }
-    .btn-primary:hover { box-shadow: 0 16px 60px -12px rgba(255, 120, 60, 0.95), inset 0 1px 0 rgba(255,255,255,.5); }
-    .btn-ghost { color: var(--fg); background: rgba(255,255,255,0.06); border: 1px solid var(--faint); }
-    .btn-ghost:hover { background: rgba(255,255,255,0.1); }
-    .btn small { font-weight: 500; opacity: 0.7; font-size: 13px; }
-    .topbar .btn { padding: 9px 16px; font-size: 14px; }
+    .btn { position: relative; display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 26px 0 8px; border-radius: 999px; border: 0; font-size: 17px; font-weight: 500; cursor: pointer; transition: transform 0.2s ease; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn .disc { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--sun); color: var(--sun-ink); box-shadow: 0 6px 18px -6px rgba(245, 197, 24, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+    .btn .disc svg { width: 19px; height: 19px; }
+    .btn small { color: var(--dim); font-size: 14px; }
+    .btn.plain { padding: 0 24px; }
 
     /* ---------- Hero ---------- */
-    .hero { min-height: 100svh; display: grid; place-items: center; padding: 120px 20px 60px; text-align: center; }
-    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #ffd9bf; background: rgba(255, 138, 61, 0.12); border: 1px solid rgba(255, 138, 61, 0.28); }
-    .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 12px #3ddc84; font-style: normal; }
-    h1 { margin: 22px auto 0; max-width: 15ch; font-size: clamp(44px, 8.2vw, 104px); line-height: 0.98; letter-spacing: -0.045em; font-weight: 800; }
-    .gradient-text { background: linear-gradient(100deg, #fff 10%, #ffd0a8 40%, #ff8a3d 60%, #e2416b 85%); -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: shine 9s ease-in-out infinite alternate; }
-    @keyframes shine { to { background-position: 100% 0; } }
-    .lede { max-width: 640px; margin: 24px auto 0; font-size: clamp(17px, 2vw, 20px); color: var(--muted); }
-    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 36px; }
-    .meta { margin-top: 16px; font-size: 13px; color: var(--muted); }
+    .hero { max-width: var(--max); margin: 0 auto; padding: 70px 20px 40px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+    .tags { font-size: 17px; color: var(--soft); }
+    h1 { margin: 10px 0 0; font-size: clamp(40px, 5.4vw, 68px); line-height: 1.06; font-weight: 500; letter-spacing: -0.015em; }
+    .lede { margin: 20px 0 0; max-width: 46ch; font-size: 17px; font-weight: 300; color: var(--soft); }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .fineprint { margin-top: 14px; font-size: 14px; color: var(--dim); }
 
-    /* Desktop mockup with a live notch */
-    .stage { position: relative; width: min(1100px, 100%); margin: 70px auto 0; perspective: 1600px; }
-    .screen { position: relative; aspect-ratio: 16 / 9; border-radius: 26px; overflow: hidden; transform: rotateX(var(--rx, 8deg)) rotateY(var(--ry, 0deg)); transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(.2,.8,.2,1); box-shadow: 0 60px 140px -40px rgba(226, 65, 107, 0.45), 0 0 0 1px rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.04); background:
-        radial-gradient(ellipse at 20% 80%, rgba(255, 138, 61, 0.55), transparent 55%),
-        radial-gradient(ellipse at 85% 30%, rgba(123, 92, 255, 0.55), transparent 55%),
-        radial-gradient(ellipse at 50% 120%, rgba(226, 65, 107, 0.7), transparent 60%),
-        linear-gradient(160deg, #1b1430, #0b0912 70%); }
-    .screen::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,255,255,0.08), transparent 40%); pointer-events: none; }
-    .wallpaper-sun { position: absolute; left: 50%; top: 58%; width: 34%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle at 50% 40%, #ffd27a, #ff8a3d 55%, transparent 70%); opacity: 0.55; filter: blur(2px); }
-    .hills { position: absolute; inset: auto 0 0 0; height: 38%; background: linear-gradient(to top, #0b0716, rgba(11,7,22,0.2)); clip-path: polygon(0 45%, 18% 30%, 35% 48%, 55% 22%, 72% 42%, 100% 26%, 100% 100%, 0 100%); }
-    .taskbar { position: absolute; left: 50%; bottom: 2.5%; transform: translateX(-50%); display: flex; gap: 10px; padding: 9px 14px; border-radius: 16px; background: rgba(20, 16, 30, 0.55); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
-    .taskbar b { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.08)); }
-    .taskbar b:nth-child(1) { background: linear-gradient(135deg, #4cc2ff, #0067c0); }
-    .taskbar b:nth-child(3) { background: linear-gradient(135deg, #1ed760, #138a3e); }
-    .taskbar b:nth-child(4) { background: linear-gradient(135deg, #ff8a3d, #e2416b); }
-    .live-notch { position: absolute; left: 50%; top: 0; width: 100%; height: 100%; transform: translateX(-50%); pointer-events: none; }
-    .live-notch img { position: absolute; left: 50%; top: 0; transform: translateX(-50%) scale(0.92); transform-origin: 50% 0; opacity: 0; filter: blur(8px); transition: opacity 0.5s ease, transform 0.75s cubic-bezier(.3, 1.4, .5, 1), filter 0.5s ease; }
-    .live-notch img.on { opacity: 1; transform: translateX(-50%) scale(var(--s, 1)); filter: blur(0); }
-    .stage-caption { margin-top: 18px; font-size: 14px; color: var(--muted); min-height: 1.6em; transition: opacity .3s; }
-    .scroll-hint { margin: 40px auto 0; width: 26px; height: 42px; border: 2px solid rgba(255,255,255,0.25); border-radius: 14px; position: relative; }
-    .scroll-hint::after { content: ""; position: absolute; left: 50%; top: 8px; width: 4px; height: 8px; margin-left: -2px; border-radius: 2px; background: var(--fg); animation: wheel 1.8s ease-in-out infinite; }
-    @keyframes wheel { 0% { opacity: 0; transform: translateY(-4px); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(12px); } }
+    /* Desktop with a live notch */
+    .screen { position: relative; aspect-ratio: 16 / 10; border-radius: 26px; padding: 10px; }
+    .display { position: relative; height: 100%; border-radius: 18px; overflow: hidden;
+      background:
+        radial-gradient(60% 70% at 78% 30%, rgba(200, 222, 218, 0.55), transparent 70%),
+        radial-gradient(70% 60% at 20% 90%, rgba(40, 70, 76, 0.9), transparent 70%),
+        linear-gradient(170deg, #7d9ea3, #3b585e 60%, #1f3236); }
+    .display::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px); pointer-events: none; }
+    .ridge { position: absolute; inset: auto 0 0; height: 42%; background: linear-gradient(to top, #18282b, rgba(24, 40, 43, 0.35)); clip-path: polygon(0 52%, 14% 36%, 30% 50%, 47% 24%, 63% 44%, 80% 30%, 100% 46%, 100% 100%, 0 100%); }
+    .taskbar { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); display: flex; gap: 8px; padding: 7px 10px; border-radius: 14px; }
+    .taskbar b { width: 20px; height: 20px; border-radius: 6px; background: rgba(255, 255, 255, 0.3); }
+    .taskbar b:nth-child(2) { background: var(--sun); }
+    .live img { position: absolute; left: 50%; top: 0; transform: translateX(-50%) translateY(-6px) scale(0.96); transform-origin: 50% 0; opacity: 0; transition: opacity 0.45s ease, transform 0.7s cubic-bezier(.3, 1.35, .5, 1); }
+    .live img.on { opacity: 1; transform: translateX(-50%); }
+    .caption { margin: 16px 6px 0; min-height: 1.6em; font-size: 15px; color: var(--soft); transition: opacity 0.25s; }
 
     /* ---------- Sections ---------- */
-    section { position: relative; padding: 120px 20px; }
-    .wrap { max-width: var(--max); margin: 0 auto; }
-    .section-head { text-align: center; max-width: 760px; margin: 0 auto 70px; }
-    .section-head h2, .big h2 { margin: 14px 0 0; font-size: clamp(34px, 5.2vw, 64px); line-height: 1.04; letter-spacing: -0.035em; font-weight: 800; }
-    .section-head p { color: var(--muted); font-size: 19px; margin: 18px auto 0; }
-    .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+    section { max-width: var(--max); margin: 0 auto; padding: 70px 20px; scroll-margin-top: 80px; }
+    h2 { margin: 0; font-size: clamp(28px, 3.2vw, 38px); font-weight: 500; letter-spacing: -0.01em; }
+    .sub { margin: 8px 0 0; color: var(--soft); font-weight: 300; max-width: 60ch; }
 
-    /* Pill gallery */
-    .pills { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 26px 34px; }
-    .pill-card { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-    .pill-card .frame { padding: 0 24px 22px; border-radius: 0 0 26px 26px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid var(--faint); border-top: 0; }
-    .pill-card span { font-size: 14px; color: var(--muted); }
+    /* Feature rail: pick a card, the stage above shows it */
+    .feature { margin-top: 30px; border-radius: 34px; padding: 34px; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr); gap: 34px; align-items: center; min-height: 440px; }
+    .feature .tags { font-size: 15px; }
+    .feature h3 { margin: 6px 0 0; font-size: clamp(26px, 2.8vw, 36px); line-height: 1.15; font-weight: 500; }
+    .feature p { margin: 14px 0 0; color: var(--soft); font-weight: 300; }
+    .feature ul { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .feature li { display: flex; gap: 12px; font-size: 15.5px; color: var(--soft); }
+    .feature li::before { content: ""; flex: none; width: 6px; height: 6px; margin-top: 0.65em; border-radius: 50%; background: var(--tint); }
+    .feature-shot { display: grid; place-items: center; min-height: 360px; border-radius: 24px; padding: 0 18px 22px; }
+    .feature-shot img { animation: rise 0.5s cubic-bezier(.25, 1.2, .5, 1); filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.35)); }
+    .feature-text { animation: fade 0.45s ease; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+    @keyframes fade { from { opacity: 0; transform: translateX(-8px); } }
 
-    /* Sticky feature story */
-    .story { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 60px; align-items: start; }
-    .story-steps { padding: 10vh 0 30vh; }
-    .step { min-height: 62vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.28; transition: opacity 0.5s ease, transform 0.5s ease; transform: translateX(-8px); }
-    .step.active { opacity: 1; transform: none; }
-    .step .num { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; color: var(--accent); }
-    .step h3 { margin: 10px 0 0; font-size: clamp(28px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 800; }
-    .step p { margin: 16px 0 0; color: var(--muted); font-size: 18px; max-width: 46ch; }
-    .step ul { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-    .step li { position: relative; padding-left: 26px; color: rgba(245,243,250,0.82); font-size: 16px; }
-    .step li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 12px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
-    .story-visual { position: sticky; top: 12vh; height: 76vh; display: grid; place-items: center; }
-    .visual-backdrop { position: absolute; inset: 6% 0; border-radius: 40px; background: radial-gradient(ellipse at 50% 0%, rgba(255,138,61,0.22), transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01)); border: 1px solid var(--faint); overflow: hidden; }
-    .visual-backdrop::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 80% 100%, rgba(123,92,255,0.25), transparent 60%); }
-    .shot-stack { position: relative; width: 100%; height: 100%; }
-    .shot-stack img { position: absolute; left: 50%; top: 14%; width: auto; max-width: 92%; transform: translate(-50%, 24px) scale(0.96); opacity: 0; filter: blur(10px); transition: opacity 0.6s ease, transform 0.8s cubic-bezier(.25, 1.3, .5, 1), filter 0.6s ease; filter: drop-shadow(0 30px 60px rgba(0,0,0,0.55)) blur(10px); }
-    .shot-stack img.on { opacity: 1; transform: translate(-50%, 0) scale(1); filter: drop-shadow(0 30px 60px rgba(0,0,0,0.55)) blur(0); }
-    .shot-stack img.secondary { top: auto; bottom: 10%; }
-    .step-shot { display: none; }
+    .rail { margin: 26px -20px 0; padding: 14px 28px 10px; display: flex; gap: 22px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+    .rail::-webkit-scrollbar { display: none; }
+    .tile { flex: none; width: 220px; scroll-snap-align: start; border: 0; padding: 0; background: none; cursor: pointer; text-align: center; }
+    .tile .face { display: grid; place-items: start center; height: 150px; border-radius: 20px; padding: 0 12px 10px; overflow: hidden; transition: transform 0.25s ease; }
+    .tile .face img { width: 100%; max-height: 100%; object-fit: contain; object-position: top; }
+    .tile span { display: block; margin-top: 12px; font-size: 18px; color: var(--soft); transition: color 0.2s; }
+    .tile:hover .face { transform: translateY(-3px); }
+    .tile[aria-pressed="true"] .face { outline: 3px solid rgba(255, 255, 255, 0.92); outline-offset: 4px; }
+    .tile[aria-pressed="true"] span { color: #fff; }
+    .tile:focus-visible { outline: none; }
+    .tile:focus-visible .face { outline: 3px solid var(--sun); outline-offset: 4px; }
 
-    /* Bento: more features */
-    .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; }
-    .card { position: relative; grid-column: span 2; padding: 30px; border-radius: var(--radius); background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.02)); border: 1px solid var(--faint); overflow: hidden; transition: transform 0.4s cubic-bezier(.2,.8,.2,1), border-color 0.4s; }
-    .card:hover { border-color: rgba(255,138,61,0.35); }
-    .card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(400px circle at var(--cx, 50%) var(--cy, 0%), rgba(255,138,61,0.14), transparent 50%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .card:hover::before { opacity: 1; }
-    .card.wide { grid-column: span 3; }
-    .card.full { grid-column: span 6; }
-    .card .icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(135deg, rgba(255,138,61,0.25), rgba(226,65,107,0.18)); border: 1px solid rgba(255,138,61,0.3); }
-    .card .icon svg { width: 22px; height: 22px; stroke: #ffc49a; }
-    .card h3 { margin: 18px 0 0; font-size: 21px; letter-spacing: -0.02em; }
-    .card p { margin: 8px 0 0; color: var(--muted); font-size: 15.5px; }
-    .card img { margin: 26px auto 0; }
+    /* Small states */
+    .pills { margin-top: 30px; border-radius: 30px; padding: 30px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+    .pill { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .pill .slot { width: 100%; height: 96px; display: grid; place-items: start center; border-radius: 20px; overflow: hidden; }
+    .pill span { font-size: 15px; color: var(--soft); text-align: center; }
 
     /* Windows */
-    .windows { display: grid; grid-template-columns: 1.6fr 1fr; gap: 26px; align-items: center; }
-    .window-shot { border-radius: 30px; overflow: hidden; box-shadow: 0 50px 120px -40px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06); }
-    .window-label { margin-top: 16px; text-align: center; color: var(--muted); font-size: 15px; }
+    .windows { margin-top: 30px; display: grid; grid-template-columns: 1.55fr 1fr; gap: 22px; }
+    .win { border-radius: 30px; padding: 22px; display: flex; flex-direction: column; }
+    .win .frame { flex: 1; display: grid; place-items: center; border-radius: 20px; padding: 22px; }
+    .win .frame img { border-radius: 14px; }
+    .win h3 { margin: 18px 4px 0; font-size: 20px; font-weight: 500; }
+    .win p { margin: 4px 4px 0; color: var(--soft); font-weight: 300; font-size: 15.5px; }
 
-    /* Stats */
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-    .stat { padding: 34px 30px; border-radius: var(--radius); border: 1px solid var(--faint); background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent); }
-    .stat b { display: block; font-size: clamp(40px, 5vw, 60px); line-height: 1; letter-spacing: -0.04em; font-weight: 800; }
-    .stat span { display: block; margin-top: 12px; color: var(--muted); font-size: 16px; }
+    /* Facts */
+    .facts { margin-top: 30px; border-radius: 30px; display: grid; grid-template-columns: repeat(4, 1fr); }
+    .fact { padding: 28px 28px 30px; }
+    .fact + .fact { border-left: 1px solid var(--line); }
+    .fact b { display: block; font-size: 34px; font-weight: 500; letter-spacing: -0.01em; }
+    .fact span { display: block; margin-top: 4px; color: var(--soft); font-weight: 300; font-size: 15px; }
 
     /* Download */
-    .download { text-align: center; padding-bottom: 160px; }
-    .download .panel { position: relative; max-width: 920px; margin: 0 auto; padding: 80px 30px; border-radius: 44px; overflow: hidden; border: 1px solid rgba(255,138,61,0.25); background: radial-gradient(ellipse at 50% 0%, rgba(255,138,61,0.28), transparent 60%), radial-gradient(ellipse at 50% 120%, rgba(123,92,255,0.25), transparent 60%), rgba(255,255,255,0.03); }
-    .download .panel img.app-icon { width: 96px; height: 96px; margin: 0 auto 26px; border-radius: 26px; box-shadow: 0 20px 60px -10px rgba(255,138,61,0.6); animation: float 6s ease-in-out infinite; }
-    @keyframes float { 50% { transform: translateY(-10px); } }
-    .download .req { margin-top: 30px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-    .download .req span { padding: 7px 14px; border-radius: 999px; font-size: 13.5px; color: var(--muted); border: 1px solid var(--faint); background: rgba(255,255,255,0.03); }
-    .note { max-width: 620px; margin: 26px auto 0; font-size: 14px; color: var(--muted); }
-    .note b { color: var(--fg); }
+    .get { border-radius: 36px; padding: 44px; display: grid; grid-template-columns: auto 1fr auto; gap: 30px; align-items: center; }
+    .get .icon { width: 92px; height: 92px; border-radius: 26px; padding: 10px; }
+    .get .icon img { border-radius: 18px; }
+    .get h2 { font-size: clamp(26px, 3vw, 34px); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .chips span { padding: 5px 14px; border-radius: 999px; font-size: 14px; color: var(--soft); }
+    .note { margin: 22px 0 0; font-size: 14.5px; color: var(--dim); max-width: 80ch; }
+    .note b { color: var(--soft); font-weight: 500; }
 
-    footer { padding: 40px 20px 60px; text-align: center; color: var(--muted); font-size: 14px; border-top: 1px solid var(--faint); }
-    footer a { color: var(--fg); }
-
-    /* Reveal on scroll */
-    .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.9s ease, transform 0.9s cubic-bezier(.2,.8,.2,1); }
-    .reveal.in { opacity: 1; transform: none; }
+    footer { max-width: var(--max); margin: 0 auto; padding: 30px 20px 50px; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; color: var(--dim); font-size: 14.5px; }
+    footer a { color: var(--soft); }
+    footer a:hover { color: var(--ink); }
 
     /* ---------- Small screens ---------- */
-    @media (max-width: 900px) {
-      .topbar nav { display: none; }
-      .story { grid-template-columns: 1fr; gap: 0; }
-      .story-visual { display: none; }
-      .story-steps { padding: 0; }
-      .step { min-height: 0; padding: 34px 0; opacity: 1; transform: none; }
-      .step-shot { display: block; margin: 26px auto 0; filter: drop-shadow(0 24px 40px rgba(0,0,0,0.55)); }
-      .bento { grid-template-columns: 1fr; }
-      .card, .card.wide, .card.full { grid-column: auto; }
+    @media (max-width: 1000px) {
+      .hero { grid-template-columns: 1fr; padding-top: 44px; gap: 40px; }
+      .hero > :first-child { order: 1; }
+      .feature { grid-template-columns: 1fr; padding: 24px; min-height: 0; }
+      .feature-shot { min-height: 0; order: -1; }
+      .pills { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .windows { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: 1fr; }
-      section { padding: 90px 16px; }
-      .screen { border-radius: 16px; }
+      .facts { grid-template-columns: repeat(2, 1fr); }
+      .fact:nth-child(3) { border-left: 0; }
+      .fact:nth-child(n + 3) { border-top: 1px solid var(--line); }
+      .get { grid-template-columns: 1fr; text-align: left; padding: 30px; }
+    }
+    @media (max-width: 720px) {
+      .top { padding: 12px 16px 0; }
+      .seg, .today, .bar .home { display: none; }
+      .dock { padding: 5px 16px 5px 5px; }
+      .round { width: 44px; height: 44px; }
+      .hero, section { padding-left: 16px; padding-right: 16px; }
+      .rail { margin: 22px -16px 0; padding-left: 16px; padding-right: 16px; gap: 16px; }
+      .tile { width: 172px; }
+      .tile .face { height: 118px; }
+      .pills { grid-template-columns: 1fr; padding: 20px; }
+      .facts { grid-template-columns: 1fr; }
+      .fact + .fact { border-left: 0; border-top: 1px solid var(--line); }
+      .btn { width: 100%; }
+      .screen { border-radius: 18px; padding: 6px; }
+      .display { border-radius: 13px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
-      .reveal { opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
-  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
-  <div class="vignette" aria-hidden="true"></div>
-  <div class="grain" aria-hidden="true"></div>
-  <div class="cursor-light" aria-hidden="true"></div>
+  <div class="wall" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="lines" aria-hidden="true"></div>
 
-  <header class="topbar" id="topbar">
-    <a class="brand" href="#top"><img src="icon.png" alt="" width="24" height="24" />Island Notch</a>
-    <nav>
-      <a href="#fitur">Fitur</a>
-      <a href="#lainnya">Lainnya</a>
-      <a href="#ringan">Ringan</a>
-    </nav>
-    <a class="btn btn-primary download-link" href="https://github.com/adrawsf/island-notch/releases/latest">Download</a>
+  <header class="top">
+    <div class="bar">
+      <div class="dock glass">
+        <a class="round well home" href="#top" aria-label="Ke atas">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.3 3.2a1 1 0 0 1 1.4 0l7.6 7.1c.4.4.7.9.7 1.5V19a2 2 0 0 1-2 2h-3.5v-5.5h-7V21H5a2 2 0 0 1-2-2v-7.2c0-.6.3-1.1.7-1.5l7.6-7.1Z"/></svg>
+        </a>
+        <a class="brand" href="#top"><img src="icon.png" alt="" width="26" height="26" />island<b>notch</b></a>
+        <nav class="seg well" id="seg">
+          <a href="#fitur" data-for="fitur">Fitur</a>
+          <a href="#tampilan" data-for="tampilan">Tampilan</a>
+          <a href="#unduh" data-for="unduh">Unduh</a>
+        </nav>
+      </div>
+      <div class="spacer"></div>
+      <span class="today" id="today"></span>
+      <a class="round glass" href="https://github.com/adrawsf/island-notch" aria-label="Kode sumber di GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2Z"/></svg>
+      </a>
+      <a class="round glass download-link" href="https://github.com/adrawsf/island-notch/releases/latest" aria-label="Unduh installer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14"/></svg>
+      </a>
+    </div>
   </header>
 
-  <!-- ===================== HERO ===================== -->
   <main id="top">
+    <!-- Hero -->
     <div class="hero">
       <div>
-        <span class="eyebrow"><i></i>Gratis &amp; open source · Windows 10/11</span>
-        <h1><span class="gradient-text">Dynamic Island</span> untuk Windows.</h1>
-        <p class="lede">Island Notch mengubah bagian atas layarmu jadi pusat kendali yang hidup: lagu dengan lirik sinkron, notifikasi, volume per aplikasi, monitor sistem, catatan — muncul saat dibutuhkan, menghilang saat tidak.</p>
-        <div class="cta-row">
-          <a class="btn btn-primary download-link magnetic" href="https://github.com/adrawsf/island-notch/releases/latest">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.2H3V5.1Zm8.3-1.2L21 2.5v8.7h-9.7V3.9ZM3 12.6h7.4v7.3L3 18.9v-6.3Zm8.3 0H21v8.8l-9.7-1.4v-7.4Z"/></svg>
-            <span>Download untuk Windows <small class="download-meta"></small></span>
-          </a>
-          <a class="btn btn-ghost" href="https://github.com/adrawsf/island-notch">Lihat di GitHub</a>
-        </div>
-        <p class="meta download-version">Installer 64-bit · update otomatis di dalam aplikasi</p>
-
-        <div class="stage reveal" id="stage">
-          <div class="screen" id="screen">
-            <div class="wallpaper-sun"></div>
-            <div class="hills"></div>
-            <div class="taskbar" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></div>
-            <div class="live-notch" id="liveNotch" aria-live="polite">
-              <img src="shots/pill-lyrics.webp" width="272" height="68" alt="Notch kecil menampilkan baris lirik yang sedang dinyanyikan" data-caption="Lirik ikut bernyanyi, langsung di notch." />
-              <img src="shots/toast.webp" width="405" height="92" alt="Notifikasi WhatsApp muncul di notch" data-caption="Notifikasi muncul sebentar, lengkap dengan ikon aplikasinya." />
-              <img src="shots/tab-media-lyrics.webp" width="632" height="231" alt="Notch terbuka di tab Media dengan lirik" data-caption="Arahkan kursor ke atas — notch membuka dengan lembut." />
-              <img src="shots/pill-widgets.webp" width="350" height="68" alt="Notch kecil dengan jam, tanggal, CPU, dan baterai" data-caption="Saat tidak ada musik: jam, tanggal, CPU, baterai — pilih sendiri." />
-              <img src="shots/tab-system.webp" width="652" height="376" alt="Tab Sistem dengan CPU, memori, GPU, dan jaringan" data-caption="Semua tab hanya satu gerakan kursor jauhnya." />
+        <div class="screen glass">
+          <div class="display">
+            <div class="ridge"></div>
+            <div class="taskbar glass" aria-hidden="true"><b></b><b></b><b></b><b></b></div>
+            <div class="live" id="live" aria-live="polite">
+              <img src="shots/pill-lyrics.webp" width="272" height="68" alt="Notch kecil menampilkan baris lirik yang sedang dinyanyikan" data-caption="Lirik yang sedang dinyanyikan, langsung di notch." />
+              <img src="shots/toast.webp" width="405" height="92" alt="Notifikasi WhatsApp di notch" data-caption="Notifikasi masuk sebentar, lengkap dengan ikon aplikasinya." />
+              <img src="shots/tab-media-lyrics.webp" width="632" height="231" alt="Notch terbuka di tab Media" data-caption="Arahkan kursor ke atas layar, notch terbuka." />
+              <img src="shots/pill-widgets.webp" width="350" height="68" alt="Notch kecil dengan jam, tanggal, CPU, dan baterai" data-caption="Tidak ada lagu? Jam, tanggal, CPU, dan baterai." />
             </div>
           </div>
-          <p class="stage-caption" id="stageCaption">Lirik ikut bernyanyi, langsung di notch.</p>
         </div>
-        <div class="scroll-hint" aria-hidden="true"></div>
+        <p class="caption" id="caption"></p>
+      </div>
+
+      <div>
+        <div class="tags">Windows 10 · 11 · Gratis</div>
+        <h1>Dynamic Island, sekarang di Windows</h1>
+        <p class="lede">Bagian atas layarmu jadi tempat lagu, lirik, notifikasi, volume, dan catatan. Kecil saat diam, terbuka saat kursor mendekat, dan tembus klik selebihnya.</p>
+        <div class="actions">
+          <a class="btn glass download-link" href="https://github.com/adrawsf/island-notch/releases/latest">
+            <span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14"/></svg></span>
+            <span>Unduh <small class="download-meta"></small></span>
+          </a>
+          <a class="btn plain glass" href="#fitur">Lihat fitur</a>
+        </div>
+        <p class="fineprint download-version">Installer 64-bit · update otomatis dari dalam aplikasi</p>
       </div>
     </div>
 
-    <!-- ===================== PILLS ===================== -->
-    <section>
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="kicker">Selalu di atas, tidak pernah menghalangi</span>
-          <h2>Kecil saat diam.<br />Berguna setiap saat.</h2>
-          <p>Notch berubah bentuk mengikuti apa yang sedang terjadi — lalu kembali jadi pil mungil yang tembus klik.</p>
-        </div>
-        <div class="pills">
-          <div class="pill-card reveal"><div class="frame"><img src="shots/pill-lyrics.webp" width="272" height="68" alt="Pill lirik" loading="lazy" /></div><span>Lirik yang sedang dinyanyikan</span></div>
-          <div class="pill-card reveal"><div class="frame"><img src="shots/pill-widgets.webp" width="350" height="68" alt="Pill widget" loading="lazy" /></div><span>Jam, tanggal, CPU, baterai</span></div>
-          <div class="pill-card reveal"><div class="frame"><img src="shots/toast.webp" width="405" height="92" alt="Toast notifikasi" loading="lazy" /></div><span>Notifikasi dari aplikasi mana pun</span></div>
-          <div class="pill-card reveal"><div class="frame"><img src="shots/pill-dnd.webp" width="188" height="68" alt="Pill dengan kucing piksel dan tanda Jangan ganggu" loading="lazy" /></div><span>Kucing piksel &amp; mode Jangan ganggu</span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================== STORY ===================== -->
+    <!-- Features -->
     <section id="fitur">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="kicker">Semua di satu tempat</span>
-          <h2>Satu notch, sepuluh alat yang sering kamu cari.</h2>
-        </div>
-        <div class="story">
-          <div class="story-steps">
-            <article class="step" data-shot="0">
-              <span class="num">01 · MEDIA</span>
-              <h3>Musik dengan lirik yang ikut bernyanyi.</h3>
-              <p>Spotify, YouTube Music, Apple Music, atau apa pun yang memutar lagu — cover, kontrol, dan progresnya langsung di notch.</p>
-              <ul><li>Lirik tersinkron dari LRCLIB, NetEase, Kugou, QQ Music, Genius</li><li>Romanisasi lirik Jepang, Korea, dan Mandarin</li><li>Scroll di notch untuk mengubah volume pemutar</li><li>Video YouTube diabaikan — notch tetap setia ke lagumu</li></ul>
-            </article>
-            <article class="step" data-shot="1">
-              <span class="num">02 · NOTIFIKASI</span>
-              <h3>Notifikasi Windows, versi yang lebih rapi.</h3>
-              <p>Chat, email, dan pengingat muncul sebentar di notch, lalu tersimpan per aplikasi. Klik untuk membuka aplikasinya.</p>
-              <ul><li>Dikelompokkan per aplikasi, bisa dilipat</li><li>Bisukan aplikasi yang terlalu berisik</li><li>Jangan ganggu: 1 jam, sampai besok pagi, atau ikuti Fokus Windows</li><li>Tetap tampil di atas video layar penuh</li></ul>
-            </article>
-            <article class="step" data-shot="2">
-              <span class="num">03 · SUARA</span>
-              <h3>Volume setiap aplikasi, satu sentuhan.</h3>
-              <p>Kecilkan Discord, keraskan Spotify, pindah ke headset — tanpa membuka mixer Windows.</p>
-              <ul><li>Slider per aplikasi dengan ikon aslinya</li><li>Pilih perangkat output dalam sekali klik</li><li>Matikan mikrofon, tanda merah muncul di notch</li></ul>
-            </article>
-            <article class="step" data-shot="3">
-              <span class="num">04 · SISTEM</span>
-              <h3>Denyut komputermu, terlihat jelas.</h3>
-              <p>CPU, memori, GPU, dan jaringan dengan grafik 60 detik. Tahu aplikasi mana yang paling berat — dan tutup dari sini.</p>
-              <ul><li>Penyimpanan tiap drive dan sisa baterai</li><li>Peringatan saat CPU/RAM penuh atau baterai lemah</li><li>Widget CPU, RAM, unduhan, baterai untuk pill</li></ul>
-            </article>
-            <article class="step" data-shot="4">
-              <span class="num">05 · CLIPBOARD &amp; OCR</span>
-              <h3>Semua yang kamu salin, siap ditempel lagi.</h3>
-              <p>Riwayat teks dan gambar, bisa dicari dan disematkan. Klik untuk langsung menempel ke aplikasi sebelumnya.</p>
-              <ul><li>Ambil teks dari bagian mana pun di layar (OCR)</li><li>Shortcut global <b>Ctrl+Alt+T</b></li></ul>
-            </article>
-            <article class="step" data-shot="5">
-              <span class="num">06 · DROP SHELF</span>
-              <h3>Rak sementara untuk file, teks, dan link.</h3>
-              <p>Seret apa pun ke notch, simpan di Shelf, lalu seret keluar lagi ke aplikasi mana saja — antar jendela, antar desktop.</p>
-              <ul><li>Thumbnail gambar dan dokumen</li><li>Buka atau tampilkan di Explorer</li></ul>
-            </article>
-            <article class="step" data-shot="6">
-              <span class="num">07 · CATATAN &amp; POMODORO</span>
-              <h3>Fokus, tanpa pindah jendela.</h3>
-              <p>Catatan cepat dan checklist ala Keep, plus timer Pomodoro dengan suara ambience — hujan, ombak, api unggun.</p>
-            </article>
-            <article class="step" data-shot="7">
-              <span class="num">08 · TELEPROMPTER</span>
-              <h3>Naskah tepat di bawah kamera.</h3>
-              <p>Baca naskah langsung di notch atau di jendela tembus pandang — tersembunyi dari rekaman dan screen share.</p>
-            </article>
-          </div>
-          <div class="story-visual">
-            <div class="visual-backdrop"></div>
-            <div class="shot-stack" id="shotStack">
-              <img src="shots/tab-media-lyrics.webp" width="632" height="231" alt="Tab Media dengan lirik" />
-              <img src="shots/tab-notifications.webp" width="572" height="374" alt="Tab Notifikasi" loading="lazy" />
-              <img src="shots/tab-sound.webp" width="592" height="347" alt="Tab Suara" loading="lazy" />
-              <img src="shots/tab-system.webp" width="652" height="376" alt="Tab Sistem" loading="lazy" />
-              <img src="shots/tab-clipboard.webp" width="592" height="334" alt="Tab Clipboard" loading="lazy" />
-              <img src="shots/tab-shelf.webp" width="612" height="360" alt="Tab Shelf" loading="lazy" />
-              <img src="shots/tab-notes.webp" width="612" height="320" alt="Tab Catatan" loading="lazy" />
-              <img src="shots/tab-teleprompter.webp" width="592" height="266" alt="Tab Prompter" loading="lazy" />
-            </div>
-          </div>
-        </div>
+      <h2>Fitur</h2>
+      <p class="sub">Sepuluh tab, satu gerakan kursor. Pilih salah satu.</p>
+
+      <div class="feature glass" id="feature" aria-live="polite"></div>
+
+      <div class="rail" id="rail" role="toolbar" aria-label="Daftar fitur"></div>
+
+      <!-- Feature content; the script builds the rail and the stage from these. -->
+      <div hidden id="features">
+        <article data-shot="shots/tab-media-lyrics.webp" data-w="632" data-h="231" data-name="Media">
+          <div class="tags">Musik , Lirik</div>
+          <h3>Lagu yang sedang diputar, dengan lirik sinkron</h3>
+          <p>Spotify, YouTube Music, Apple Music, atau pemutar lain. Cover, kontrol, dan progresnya ada di notch.</p>
+          <ul><li>Lirik dari LRCLIB, NetEase, Kugou, QQ Music, dan Genius</li><li>Romanisasi lirik Jepang, Korea, dan Mandarin</li><li>Scroll di notch untuk mengubah volume pemutar</li><li>Video di browser diabaikan, notch tetap ke lagumu</li></ul>
+        </article>
+        <article data-shot="shots/tab-notifications.webp" data-w="572" data-h="374" data-name="Notifikasi">
+          <div class="tags">Windows , Jangan ganggu</div>
+          <h3>Notifikasi Windows, dikelompokkan per aplikasi</h3>
+          <p>Chat, email, dan pengingat tampil sebentar di notch lalu disimpan. Klik untuk membuka aplikasinya.</p>
+          <ul><li>Bisukan aplikasi yang terlalu berisik</li><li>Jangan ganggu: 1 jam, sampai besok, atau ikut Fokus Windows</li><li>Tetap muncul di atas video layar penuh</li></ul>
+        </article>
+        <article data-shot="shots/tab-sound.webp" data-w="592" data-h="347" data-name="Suara">
+          <div class="tags">Mixer , Output</div>
+          <h3>Volume tiap aplikasi tanpa membuka mixer</h3>
+          <p>Kecilkan Discord, keraskan Spotify, atau pindah ke headset dari notch.</p>
+          <ul><li>Slider per aplikasi dengan ikon aslinya</li><li>Ganti perangkat output sekali klik</li><li>Mute mikrofon, tandanya muncul di notch</li></ul>
+        </article>
+        <article data-shot="shots/tab-system.webp" data-w="652" data-h="376" data-name="Sistem">
+          <div class="tags">CPU , RAM , GPU</div>
+          <h3>Kondisi komputer dalam satu tampilan</h3>
+          <p>CPU, memori, GPU, dan jaringan dengan grafik 60 detik, plus aplikasi yang paling berat.</p>
+          <ul><li>Sisa penyimpanan tiap drive dan baterai</li><li>Peringatan saat CPU atau RAM penuh</li><li>Widget CPU, RAM, unduhan, dan baterai untuk notch kecil</li></ul>
+        </article>
+        <article data-shot="shots/tab-clipboard.webp" data-w="592" data-h="334" data-name="Clipboard">
+          <div class="tags">Riwayat , OCR</div>
+          <h3>Riwayat salinan, teks maupun gambar</h3>
+          <p>Cari, sematkan, lalu klik untuk menempel langsung ke aplikasi sebelumnya.</p>
+          <ul><li>Ambil teks dari bagian mana pun di layar (OCR)</li><li>Shortcut Ctrl+Alt+T</li></ul>
+        </article>
+        <article data-shot="shots/tab-shelf.webp" data-w="612" data-h="360" data-name="Shelf">
+          <div class="tags">File , Teks , Link</div>
+          <h3>Rak sementara untuk barang yang diseret</h3>
+          <p>Seret file ke notch, pindah jendela, lalu seret keluar lagi ke tempat tujuan.</p>
+          <ul><li>Thumbnail gambar dan dokumen</li><li>Buka, atau tampilkan di Explorer</li></ul>
+        </article>
+        <article data-shot="shots/tab-notes.webp" data-w="612" data-h="320" data-name="Catatan">
+          <div class="tags">Teks , Checklist</div>
+          <h3>Catatan cepat yang selalu dekat</h3>
+          <p>Tulis ide atau daftar belanja tanpa membuka aplikasi lain. Tersimpan di komputermu sendiri.</p>
+        </article>
+        <article data-shot="shots/tab-pomodoro.webp" data-w="612" data-h="254" data-name="Pomodoro">
+          <div class="tags">Fokus , Ambience</div>
+          <h3>Timer fokus dengan suara hujan</h3>
+          <p>Atur waktu fokus dan istirahat. Suara hujan, ombak, api, dan angin dibuat langsung oleh aplikasi.</p>
+        </article>
+        <article data-shot="shots/tab-teleprompter.webp" data-w="592" data-h="266" data-name="Prompter">
+          <div class="tags">Rekaman , Meeting</div>
+          <h3>Naskah tepat di bawah kamera</h3>
+          <p>Baca naskah di notch atau di jendela tembus pandang yang tidak ikut terekam saat screen share.</p>
+        </article>
+        <article data-shot="shots/tab-home.webp" data-w="632" data-h="314" data-name="Beranda">
+          <div class="tags">Jam , Gambar</div>
+          <h3>Beranda yang kamu susun sendiri</h3>
+          <p>Jam besar, jam dunia, gambar atau GIF favorit, dan kucing piksel yang ikut bergoyang saat lagu diputar.</p>
+        </article>
       </div>
     </section>
 
-    <!-- ===================== BENTO ===================== -->
-    <section id="lainnya">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="kicker">Dan masih ada lagi</span>
-          <h2>Dibuat untuk dipakai setiap hari.</h2>
-        </div>
-        <div class="bento">
-          <div class="card wide reveal">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5Z"/></svg></div>
-            <h3>Beranda yang kamu susun sendiri</h3>
-            <p>Jam besar, jam dunia, gambar atau GIF favorit, dan seekor kucing piksel yang ikut joget saat lagu diputar.</p>
-            <img src="shots/tab-home.webp" width="632" height="314" alt="Tab Beranda" loading="lazy" />
-          </div>
-          <div class="card wide reveal">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg></div>
-            <h3>Pomodoro dengan ambience</h3>
-            <p>Atur fokus dan istirahat, dengarkan hujan atau ombak yang disintesis langsung — tanpa file audio.</p>
-            <img src="shots/tab-pomodoro.webp" width="612" height="254" alt="Tab Pomodoro" loading="lazy" />
-          </div>
-          <div class="card reveal">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></div>
-            <h3>Menyingkir sendiri</h3>
-            <p>Mengecil jadi garis tipis saat browser di bawahnya, dan sembunyi saat game atau video layar penuh.</p>
-          </div>
-          <div class="card reveal">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg></div>
-            <h3>Notch atau island</h3>
-            <p>Menempel di tepi layar seperti notch, atau melayang seperti island. Tiga ukuran, tema gelap dan terang.</p>
-          </div>
-          <div class="card reveal">
-            <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/><path d="m16 15 2 2 4-4"/></svg></div>
-            <h3>Shortcut global</h3>
-            <p><b>Ctrl+Alt+N</b> membuka notch dari mana saja — bisa diganti sesukamu.</p>
-          </div>
-        </div>
+    <!-- Look -->
+    <section id="tampilan">
+      <h2>Saat notch mengecil</h2>
+      <p class="sub">Notch kecil berubah sesuai keadaan, lalu kembali tembus klik.</p>
+      <div class="pills glass">
+        <div class="pill"><div class="slot well"><img src="shots/pill-lyrics.webp" width="272" height="68" alt="Notch kecil dengan lirik" loading="lazy" /></div><span>Baris lirik</span></div>
+        <div class="pill"><div class="slot well"><img src="shots/pill-widgets.webp" width="350" height="68" alt="Notch kecil dengan jam dan widget" loading="lazy" /></div><span>Jam, CPU, baterai</span></div>
+        <div class="pill"><div class="slot well"><img src="shots/toast.webp" width="405" height="92" alt="Notifikasi di notch" loading="lazy" /></div><span>Notifikasi masuk</span></div>
+        <div class="pill"><div class="slot well"><img src="shots/pill-dnd.webp" width="188" height="68" alt="Kucing piksel dan tanda Jangan ganggu" loading="lazy" /></div><span>Jangan ganggu</span></div>
+      </div>
 
-        <div class="windows" style="margin-top:80px">
-          <div class="reveal">
-            <div class="window-shot"><img src="shots/settings.webp" width="728" height="528" alt="Jendela Pengaturan Island Notch" loading="lazy" /></div>
-            <p class="window-label">Pengaturan yang lengkap, dengan desain kaca yang sama.</p>
-          </div>
-          <div class="reveal">
-            <div class="window-shot" style="max-width:400px;margin:0 auto"><img src="shots/miniplayer.webp" width="400" height="399" alt="Mini player dengan lirik" loading="lazy" /></div>
-            <p class="window-label">Mini player melayang dengan lirik penuh.</p>
-          </div>
+      <div class="windows">
+        <div class="win glass">
+          <div class="frame well"><img src="shots/settings.webp" width="728" height="528" alt="Jendela Pengaturan" loading="lazy" /></div>
+          <h3>Pengaturan</h3>
+          <p>Monitor, ukuran, bentuk notch atau island, tema, shortcut, dan widget.</p>
         </div>
+        <div class="win glass">
+          <div class="frame well"><img src="shots/miniplayer.webp" width="300" height="299" alt="Mini player dengan lirik" loading="lazy" /></div>
+          <h3>Mini player</h3>
+          <p>Jendela kecil melayang dengan lirik penuh.</p>
+        </div>
+      </div>
+
+      <div class="facts glass">
+        <div class="fact"><b>17 MB</b><span>ukuran installer</span></div>
+        <div class="fact"><b>±125 MB</b><span>RAM saat diam</span></div>
+        <div class="fact"><b>0</b><span>akun, iklan, atau pelacakan</span></div>
+        <div class="fact"><b>Otomatis</b><span>update dari GitHub</span></div>
       </div>
     </section>
 
-    <!-- ===================== STATS ===================== -->
-    <section id="ringan">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <span class="kicker">Ringan &amp; privat</span>
-          <h2>Tidak memberatkan.<br />Tidak mengintip.</h2>
-          <p>Dibangun dengan Rust dan WebView2 bawaan Windows. Saat notch diam, memorinya dirapikan otomatis.</p>
+    <!-- Download -->
+    <section id="unduh">
+      <div class="get glass">
+        <div class="icon well"><img src="icon.png" alt="" width="72" height="72" /></div>
+        <div>
+          <h2>Pasang Island Notch</h2>
+          <div class="chips"><span class="well">Windows 10 / 11, 64-bit</span><span class="well">WebView2 (bawaan Windows 11)</span><span class="well">Open source</span></div>
         </div>
-        <div class="stats">
-          <div class="stat reveal"><b data-count="17">0</b><span>MB installer — tanpa runtime tambahan</span></div>
-          <div class="stat reveal"><b data-count="0">0</b><span>akun, iklan, atau pelacakan. Datamu tetap di komputermu.</span></div>
-          <div class="stat reveal"><b data-count="10">0</b><span>tab fitur, dan update otomatis dari GitHub</span></div>
-        </div>
+        <a class="btn glass download-link" href="https://github.com/adrawsf/island-notch/releases/latest">
+          <span class="disc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14"/></svg></span>
+          <span>Unduh <small class="download-meta"></small></span>
+        </a>
       </div>
-    </section>
-
-    <!-- ===================== DOWNLOAD ===================== -->
-    <section class="download" id="download">
-      <div class="panel reveal">
-        <img class="app-icon" src="icon.png" alt="" width="96" height="96" />
-        <div class="big"><h2>Pasang notch-mu sekarang.</h2></div>
-        <p class="lede" style="margin-top:16px">Gratis. Sekali pasang, dan update berikutnya datang sendiri.</p>
-        <div class="cta-row">
-          <a class="btn btn-primary download-link magnetic" href="https://github.com/adrawsf/island-notch/releases/latest">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
-            <span>Download Island Notch <small class="download-meta"></small></span>
-          </a>
-          <a class="btn btn-ghost" href="https://github.com/adrawsf/island-notch/releases">Semua rilis</a>
-        </div>
-        <div class="req"><span>Windows 10 / 11 · 64-bit</span><span>WebView2 (sudah ada di Windows 11)</span><span>± 120 MB RAM saat diam</span></div>
-        <p class="note"><b>Muncul peringatan SmartScreen?</b> Installer belum ditandatangani sertifikat berbayar. Klik <b>More info</b> lalu <b>Run anyway</b>. Kode sumbernya terbuka di GitHub.</p>
-      </div>
+      <p class="note"><b>Muncul peringatan SmartScreen?</b> Installer-nya belum ditandatangani sertifikat berbayar. Klik <b>More info</b>, lalu <b>Run anyway</b>. Kode sumbernya bisa dicek di GitHub.</p>
     </section>
   </main>
 
   <footer>
-    Island Notch · dibuat dengan Rust, Tauri, dan React · <a href="https://github.com/adrawsf/island-notch">GitHub</a>
+    <span>Island Notch · Rust, Tauri, React</span>
+    <span><a href="https://github.com/adrawsf/island-notch">GitHub</a> · <a href="https://github.com/adrawsf/island-notch/releases">Semua rilis</a></span>
   </footer>
 
   <script>
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // ---------- Today's date, like a TV home screen ----------
+    document.getElementById("today").textContent = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
 
     // ---------- Download links: the latest release's installer ----------
     (async () => {
@@ -447,130 +431,67 @@
         if (!asset) return;
         const mb = (asset.size / 1024 / 1024).toLocaleString("id-ID", { maximumFractionDigits: 1 });
         document.querySelectorAll(".download-link").forEach((a) => (a.href = asset.browser_download_url));
-        document.querySelectorAll(".download-meta").forEach((s) => (s.textContent = `· ${release.tag_name} · ${mb} MB`));
-        document.querySelectorAll(".download-version").forEach((p) => (p.textContent = `Versi ${release.tag_name.replace(/^v/, "")} · installer 64-bit · update otomatis di dalam aplikasi`));
+        document.querySelectorAll(".download-meta").forEach((s) => (s.textContent = `${release.tag_name} · ${mb} MB`));
+        document.querySelectorAll(".download-version").forEach((p) => (p.textContent = `Versi ${release.tag_name.replace(/^v/, "")} · installer 64-bit · update otomatis dari dalam aplikasi`));
       } catch {}
     })();
 
-    // ---------- Cursor light + magnetic buttons ----------
-    const light = document.querySelector(".cursor-light");
-    addEventListener("pointermove", (e) => {
-      light.style.setProperty("--mx", e.clientX + "px");
-      light.style.setProperty("--my", e.clientY + "px");
-    }, { passive: true });
-    if (!reduced) {
-      document.querySelectorAll(".magnetic").forEach((btn) => {
-        btn.addEventListener("pointermove", (e) => {
-          const r = btn.getBoundingClientRect();
-          btn.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.18}px, ${(e.clientY - r.top - r.height / 2) * 0.28}px)`;
-        });
-        btn.addEventListener("pointerleave", () => (btn.style.transform = ""));
-      });
-    }
-    document.querySelectorAll(".card").forEach((card) => {
-      card.addEventListener("pointermove", (e) => {
-        const r = card.getBoundingClientRect();
-        card.style.setProperty("--cx", e.clientX - r.left + "px");
-        card.style.setProperty("--cy", e.clientY - r.top + "px");
-      });
-    });
-
-    // ---------- Hero: tilt and the live notch ----------
-    const screen = document.getElementById("screen");
-    const stage = document.getElementById("stage");
-    if (!reduced) {
-      stage.addEventListener("pointermove", (e) => {
-        const r = stage.getBoundingClientRect();
-        screen.style.setProperty("--ry", ((e.clientX - r.left) / r.width - 0.5) * 8 + "deg");
-        screen.style.setProperty("--rx", 8 - ((e.clientY - r.top) / r.height - 0.5) * 8 + "deg");
-      });
-      stage.addEventListener("pointerleave", () => {
-        screen.style.setProperty("--ry", "0deg");
-        screen.style.setProperty("--rx", "8deg");
-      });
-      addEventListener("scroll", () => {
-        const p = Math.min(1, scrollY / innerHeight);
-        screen.style.setProperty("--rx", 8 - p * 8 + "deg");
-      }, { passive: true });
-    }
-
-    // The screenshots are 2x; size the notch to the mockup (a bit larger than 1:1, to stay readable).
-    const notchImgs = [...document.querySelectorAll("#liveNotch img")];
-    const caption = document.getElementById("stageCaption");
-    const fitNotch = () => {
-      const scale = screen.clientWidth / 920;
-      notchImgs.forEach((img) => (img.style.width = img.getAttribute("width") * scale + "px"));
-    };
-    fitNotch();
-    addEventListener("resize", fitNotch);
+    // ---------- Hero: the notch cycles through its states ----------
+    const display = document.querySelector(".display");
+    const live = [...document.querySelectorAll("#live img")];
+    const caption = document.getElementById("caption");
+    // Shown a bit larger than true scale so the notch stays readable in the mockup.
+    const fit = () => live.forEach((img) => (img.style.width = Math.min(img.getAttribute("width") * (display.clientWidth / 600), display.clientWidth * 0.94) + "px"));
+    fit();
+    addEventListener("resize", fit);
     let current = 0;
     const show = (i) => {
-      notchImgs.forEach((img, k) => img.classList.toggle("on", k === i));
+      live.forEach((img, k) => img.classList.toggle("on", k === i));
       caption.style.opacity = 0;
-      setTimeout(() => { caption.textContent = notchImgs[i].dataset.caption; caption.style.opacity = 1; }, 250);
+      setTimeout(() => { caption.textContent = live[i].dataset.caption; caption.style.opacity = 1; }, 220);
     };
     show(0);
-    if (!reduced) setInterval(() => show((current = (current + 1) % notchImgs.length)), 3200);
+    if (!reduced) setInterval(() => show((current = (current + 1) % live.length)), 3400);
 
-    // ---------- Reveal on scroll ----------
-    const revealer = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (!e.isIntersecting) return;
-        e.target.classList.add("in");
-        revealer.unobserve(e.target);
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll(".reveal").forEach((el, i) => {
-      el.style.transitionDelay = (i % 4) * 70 + "ms";
-      revealer.observe(el);
+    // ---------- Feature rail ----------
+    const articles = [...document.querySelectorAll("#features article")];
+    const rail = document.getElementById("rail");
+    const stage = document.getElementById("feature");
+    const tiles = articles.map((a, i) => {
+      const tile = document.createElement("button");
+      tile.className = "tile";
+      tile.type = "button";
+      tile.innerHTML = `<div class="face glass"><img src="${a.dataset.shot}" alt="" loading="lazy" /></div><span>${a.dataset.name}</span>`;
+      tile.addEventListener("click", () => pick(i));
+      rail.append(tile);
+      return tile;
+    });
+    function pick(i, focus) {
+      const a = articles[i];
+      tiles.forEach((t, k) => t.setAttribute("aria-pressed", String(k === i)));
+      stage.innerHTML = `<div class="feature-text">${a.innerHTML}</div>
+        <div class="feature-shot well"><img src="${a.dataset.shot}" width="${a.dataset.w}" height="${a.dataset.h}" alt="Tab ${a.dataset.name}" /></div>`;
+      if (focus) {
+        tiles[i].focus();
+        tiles[i].scrollIntoView({ block: "nearest", inline: "nearest", behavior: reduced ? "auto" : "smooth" });
+      }
+    }
+    pick(0);
+    rail.addEventListener("keydown", (e) => {
+      const i = tiles.indexOf(document.activeElement);
+      if (i < 0) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); pick(Math.min(tiles.length - 1, i + 1), true); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); pick(Math.max(0, i - 1), true); }
     });
 
-    // ---------- Feature story: sticky screenshot follows the text ----------
-    const steps = [...document.querySelectorAll(".step")];
-    const shots = [...document.querySelectorAll("#shotStack img")];
-    const activate = (i) => {
-      steps.forEach((s, k) => s.classList.toggle("active", k === i));
-      shots.forEach((s, k) => s.classList.toggle("on", k === i));
-    };
-    activate(0);
-    // Small screens: each step shows its own screenshot under the text.
-    steps.forEach((step) => {
-      const img = shots[Number(step.dataset.shot)].cloneNode();
-      img.className = "step-shot";
-      img.loading = "lazy";
-      step.append(img);
-    });
-    const stepper = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) activate(Number(e.target.dataset.shot)); });
-    }, { rootMargin: "-45% 0px -45% 0px" });
-    steps.forEach((s) => stepper.observe(s));
-
-    // ---------- Count up ----------
-    const counter = new IntersectionObserver((entries) => {
+    // ---------- Top bar: highlight the section in view ----------
+    const segLinks = [...document.querySelectorAll("#seg a")];
+    const spy = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
-        if (!e.isIntersecting) return;
-        counter.unobserve(e.target);
-        const target = Number(e.target.dataset.count);
-        if (reduced || target === 0) { e.target.textContent = target; return; }
-        const start = performance.now();
-        const tick = (t) => {
-          const p = Math.min(1, (t - start) / 1200);
-          e.target.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
-          if (p < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
+        if (e.isIntersecting) segLinks.forEach((l) => l.classList.toggle("on", l.dataset.for === e.target.id));
       });
-    }, { threshold: 0.6 });
-    document.querySelectorAll("[data-count]").forEach((el) => counter.observe(el));
-
-    // ---------- Top bar: hide while scrolling down ----------
-    const bar = document.getElementById("topbar");
-    let lastY = 0;
-    addEventListener("scroll", () => {
-      const y = scrollY;
-      bar.classList.toggle("hidden", y > lastY && y > 400);
-      lastY = y;
-    }, { passive: true });
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    document.querySelectorAll("section[id]").forEach((s) => spy.observe(s));
   </script>
 </body>
 </html>
